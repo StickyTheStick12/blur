@@ -1,17 +1,21 @@
+#include "matrix.h"
+#include "ppm.h"
+#include "filters.h"
+#include <cstdlib>
 #include <iostream>
-#include <atomic>
-#
 
-int main() {
-    unsigned total = 0;
-    std::cout << "{";
-    for (unsigned i = 0; i < 255; ++i) {
-        std::cout << total << ", ";           // Starting index for i
-        total += 255 - i;                   // The number of j iterations for this i
-    }
+//TODO: change from stoul to the other library in pearson.
 
-    std::cout << "}" << std::endl;
+int main(int argc, char const* argv[])
+{
+    Reader reader {};
+    Writer writer {};
 
+    auto m { reader(argv[2]) };
+    auto radius { static_cast<unsigned>(std::stoul(argv[1])) };
+
+    auto blurred { Filter::blur(m, radius) };
+    writer(blurred, argv[3]);
 
     return 0;
 }

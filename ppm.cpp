@@ -1,13 +1,11 @@
 #include "ppm.h"
 #include <fstream>
-#include <iostream>
-#include <regex>
-#include <stdexcept>
 #include <sys/mman.h>
 #include <fcntl.h>
 #include <unistd.h>
 
-void fill(const std::string& filename)
+
+Matrix Reader::operator()(const std::string& filename)
 {
     int file = open(filename.c_str(), O_RDONLY);
 
@@ -15,135 +13,55 @@ void fill(const std::string& filename)
 
     char* mappedData = static_cast<char*>(mmap(nullptr, size, PROT_READ, MAP_PRIVATE, file, 0));
 
-    std::string magicNumber;
-
-    int i = 0;
-
-    while(mappedData[i] != '\n') {
-        magicNumber += mappedData[i];
-        i++;
+    if(mappedData[0] != 'P' && mappedData[1] != '6') {
+        std::abort();
     }
 
-    if(mappedData[i] == '#')
-        while(mappedData[i] != '\n')
-            i++;
+    mappedData += 2;
 
-    std::string dimX;
-    std::string dimY;
+    if(mappedData[0] == '#')
+        while(mappedData[0] != '\n')
+            mappedData++;
 
-    while(mappedData[i] != ' ') {
-        dimX += mappedData[i];
-        i++;
+    mappedData++;
+
+    unsigned dimX = 0;
+    unsigned dimY = 0;
+
+    while(mappedData[0] != ' ') {
+        dimX = dimX*10 + (mappedData[0] - '0');
+        mappedData++;
     }
 
-    while(mappedData[i] != '\n') {
-        dimY += mappedData[i];
-        i++;
+    mappedData++;
+
+    while(mappedData[0] != '\n') {
+        dimY = dimY*10 + (mappedData[0] - '0');
+        mappedData++;
     }
 
-    std::string color;
+    mappedData++;
 
-    while(mappedData[i] != '\n') {
-        color += mappedData[i];
-        i++;
+    unsigned long totalSize = dimX*dimY;
+
+    unsigned colorMax = 0;
+
+    while(mappedData[0] != '\n') {
+        colorMax = colorMax*10 + (mappedData[0] - '0');
+        mappedData++;
     }
 
-    //todo: use a memory map as before, save to dynamic array
+    unsigned char* R = new unsigned char[totalSize];
+    unsigned char* G = new unsigned char[totalSize];
+    unsigned char* B = new unsigned char[totalSize];
 
-
-
-    //todo don't copy data from file? instead use the already defined char array from memory map. no need to copy if we use them as chars
-}
-
-std::string get_magic_number()
-{
-    //todo: move to void fill
-    std::string magic {};
-
-    std::getline(stream, magic);
-
-    return magic;
-}
-
-std::pair<unsigned, unsigned> get_dimensions()
-{
-    //todo move to fill???
-    std::string line {};
-
-    while (std::getline(stream, line) && line[0] == '#')
-        ;
-
-    std::regex regex { "^(\\d+) (\\d+)$" };
-    std::smatch matches {};
-
-    std::regex_match(line, matches, regex);
-
-    if (matches.ready()) {
-        return { std::stoul(matches[1]), std::stoul(matches[2]) };
-    } else {
-        return { 0, 0 };
-    }
-}
-
-unsigned get_color_max()
-{
-    //todo: move to fill
-    std::string line {};
-
-    std::getline(stream, line);
-
-    std::regex regex { "^(\\d+)$" };
-    std::smatch matches {};
-
-    std::regex_match(line, matches, regex);
-
-    if (matches.ready()) {
-        return std::stoul(matches[1]);
-    } else {
-        return 0;
-    }
-}
-
-std::tuple<unsigned char*, unsigned char*, unsigned char*> Reader::get_data(unsigned x_size, unsigned y_size)
-{
-    auto size { x_size * y_size };
-    auto R { new char[size] }, G { new char[size] }, B { new char[size] };
-
-    for (auto i { 0 }, read { 0 }; i < size; i++, read = 0) {
-        stream.read(R + i, 1);
-        read += stream.gcount();
-        stream.read(G + i, 1);
-        read += stream.gcount();
-        stream.read(B + i, 1);
-        read += stream.gcount();
-
-        if (read != 3) {
-            delete[] R;
-            delete[] G;
-            delete[] B;
-            return { nullptr, nullptr, nullptr };
-        }
+    for(unsigned i = 0; i < totalSize; ++i) {
+        R[i] = mappedData[i*3];
+        G[i] = mappedData[i*3+1];
+        B[i] = mappedData[i*3+2];
     }
 
-    return { reinterpret_cast<unsigned char*>(R), reinterpret_cast<unsigned char*>(G), reinterpret_cast<unsigned char*>(B) };
-}
-
-Matrix Reader::operator()(std::string filename)
-{
-    fill(filename);
-
-    auto magic { get_magic_number() };
-
-    auto [x_size, y_size] { get_dimensions() };
-
-    auto total_size { x_size * y_size };
-
-    auto color_max { get_color_max() };
-
-    auto [R, G, B] { get_data(x_size, y_size) };
-
-    stream.clear();
-    return Matrix { R, G, B, x_size, y_size, color_max };
+    return Matrix(R,G,B, dimX, dimY, colorMax);
 }
 
 void error(std::string op, std::string what)

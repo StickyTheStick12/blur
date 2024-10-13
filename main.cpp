@@ -2,7 +2,6 @@
 #include "ppm.h"
 #include "filters.h"
 #include <cstdlib>
-#include <iostream>
 
 //TODO: change from stoul to the other library in pearson.
 

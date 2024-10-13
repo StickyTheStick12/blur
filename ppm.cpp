@@ -13,6 +13,8 @@ Matrix Reader::operator()(const std::string& filename)
 
     char* mappedData = static_cast<char*>(mmap(nullptr, size, PROT_READ, MAP_PRIVATE, file, 0));
 
+    madvise(mappedData, size, MADV_SEQUENTIAL);
+
     if(mappedData[0] != 'P' && mappedData[1] != '6') {
         std::abort();
     }
@@ -61,6 +63,9 @@ Matrix Reader::operator()(const std::string& filename)
         G[i] = mappedData[i*3+1];
         B[i] = mappedData[i*3+2];
     }
+
+    munmap(mappedData, size);
+    close(file);
 
     return { R, G, B, dimX, dimY, colorMax};
 }

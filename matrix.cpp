@@ -1,11 +1,4 @@
-/*
-Author: David Holmqvist <daae19@student.bth.se>
-*/
-
 #include "matrix.h"
-#include "ppm.h"
-#include <fstream>
-#include <stdexcept>
 
 Matrix::Matrix(unsigned char* R, unsigned char* G, unsigned char* B, unsigned x_size, unsigned y_size, unsigned color_max)
     : R { R }

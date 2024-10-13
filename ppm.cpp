@@ -5,7 +5,7 @@
 #include <unistd.h>
 
 
-Matrix Read(const int file, const int size)
+Matrix Read(const int file, const long size)
 {
     char* mappedData = static_cast<char*>(mmap(nullptr, size, PROT_READ, MAP_PRIVATE, file, 0));
 
@@ -63,18 +63,18 @@ Matrix Read(const int file, const int size)
     munmap(mappedData, size);
     close(file);
 
-    return { R, G, B, dimX, dimY, colorMax};
+    return Matrix{ R, G, B, dimX, dimY, colorMax};
 }
 
-void Write(const Matrix& m, const std::string& filename, const off_t size)
+void Write(const Matrix& m, const std::string& filename, const off_t fileSize)
 {
     int file = open(filename.c_str(), O_RDWR | O_CREAT, 0666);
 
-    ftruncate(file, size);
+    ftruncate(file, fileSize);
 
-    char* mappedOut = static_cast<char*>(mmap(nullptr, size, PROT_WRITE, MAP_SHARED, file, 0));
+    char* mappedOut = static_cast<char*>(mmap(nullptr, fileSize, PROT_WRITE, MAP_SHARED, file, 0));
 
-    madvise(mappedOut, size, MADV_SEQUENTIAL);
+    madvise(mappedOut, fileSize, MADV_SEQUENTIAL);
 
     mappedOut[0] = 'P';
     mappedOut[1] = '6';
@@ -145,7 +145,7 @@ void Write(const Matrix& m, const std::string& filename, const off_t size)
         *mappedOut++ = *it_B++;
     }
 
-    msync(mappedOut, size, MS_SYNC);
-    munmap(mappedOut, size);
+    msync(mappedOut, fileSize, MS_SYNC);
+    munmap(mappedOut, fileSize);
     close(file);
 }

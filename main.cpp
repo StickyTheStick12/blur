@@ -11,7 +11,7 @@ int main(int argc, char const* argv[])
 
     const off_t size = lseek(file, 0, SEEK_END);
 
-    auto m = Read(file, size);
+    Matrix m = Read(file, size);
 
     const char* str = argv[1];
     int radius = 0;
@@ -21,8 +21,7 @@ int main(int argc, char const* argv[])
         str++;
     }
 
-    ////////////////////////////////////////
-    Matrix blurred = Blur(m, radius);
+    auto blurred { Filter::blur(m, radius) };
 
     Write(blurred, argv[3], size);
 

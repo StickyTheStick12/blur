@@ -1,5 +1,3 @@
-#include <iostream>
-
 #if !defined(MATRIX_HPP)
 #define MATRIX_HPP
 

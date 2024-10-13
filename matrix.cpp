@@ -1,47 +1,51 @@
+/*
+Author: David Holmqvist <daae19@student.bth.se>
+*/
+
 #include "matrix.h"
 #include "ppm.h"
 #include <fstream>
 #include <stdexcept>
 
 Matrix::Matrix(unsigned char* R, unsigned char* G, unsigned char* B, unsigned x_size, unsigned y_size, unsigned color_max)
-        : R { R }
-        , G { G }
-        , B { B }
-        , x_size { x_size }
-        , y_size { y_size }
-        , color_max { color_max }
+    : R { R }
+    , G { G }
+    , B { B }
+    , x_size { x_size }
+    , y_size { y_size }
+    , color_max { color_max }
 {
 }
 
 Matrix::Matrix()
-        : Matrix {
+    : Matrix {
         nullptr,
         nullptr,
         nullptr,
         0,
         0,
         0,
-}
+    }
 {
 }
 
 Matrix::Matrix(unsigned dimension)
-        : R { new unsigned char[dimension * dimension] }
-        , G { new unsigned char[dimension * dimension] }
-        , B { new unsigned char[dimension * dimension] }
-        , x_size { dimension }
-        , y_size { dimension }
-        , color_max { 0 }
+    : R { new unsigned char[dimension * dimension] }
+    , G { new unsigned char[dimension * dimension] }
+    , B { new unsigned char[dimension * dimension] }
+    , x_size { dimension }
+    , y_size { dimension }
+    , color_max { 0 }
 {
 }
 
 Matrix::Matrix(const Matrix& other)
-        : R { new unsigned char[other.x_size * other.y_size] }
-        , G { new unsigned char[other.x_size * other.y_size] }
-        , B { new unsigned char[other.x_size * other.y_size] }
-        , x_size { other.x_size }
-        , y_size { other.y_size }
-        , color_max { other.color_max }
+    : R { new unsigned char[other.x_size * other.y_size] }
+    , G { new unsigned char[other.x_size * other.y_size] }
+    , B { new unsigned char[other.x_size * other.y_size] }
+    , x_size { other.x_size }
+    , y_size { other.y_size }
+    , color_max { other.color_max }
 {
     for (auto x { 0 }; x < x_size; x++) {
         for (auto y { 0 }; y < y_size; y++) {

@@ -17,13 +17,14 @@ Matrix Reader::operator()(const std::string& filename)
         std::abort();
     }
 
-    mappedData += 2;
+    mappedData += 3;
 
-    if(mappedData[0] == '#')
+    if(mappedData[0] == '#') {
         while(mappedData[0] != '\n')
             mappedData++;
 
-    mappedData++;
+        mappedData++;
+    }
 
     unsigned dimX = 0;
     unsigned dimY = 0;
@@ -61,7 +62,7 @@ Matrix Reader::operator()(const std::string& filename)
         B[i] = mappedData[i*3+2];
     }
 
-    return Matrix(R,G,B, dimX, dimY, colorMax);
+    return { R, G, B, dimX, dimY, colorMax};
 }
 
 void error(std::string op, std::string what)

@@ -2,20 +2,29 @@
 #include "ppm.h"
 #include "filters.h"
 #include <cstdlib>
-
-//TODO: change from stoul to the other library in pearson.
+#include <fcntl.h>
+#include <unistd.h>
 
 int main(int argc, char const* argv[])
 {
-    Reader reader {};
-    Writer writer {};
+    const int file = open(argv[2], O_RDONLY);
 
-    auto m { reader(argv[2]) };
+    const off_t size = lseek(file, 0, SEEK_END);
 
-    auto radius { static_cast<unsigned>(std::stoul(argv[1])) };
+    auto m = Read(file, size);
 
-    auto blurred { Filter::blur(m, radius) };
-    writer(blurred, argv[3]);
+    const char* str = argv[1];
+    int radius = 0;
+
+    while (*str >= '0' && *str <= '9') {
+        radius = radius * 10 + (*str - '0');
+        str++;
+    }
+
+    ////////////////////////////////////////
+    Matrix blurred = Blur(m, radius);
+
+    Write(blurred, argv[3], size);
 
     return 0;
 }

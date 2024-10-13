@@ -5,12 +5,8 @@
 #include <unistd.h>
 
 
-Matrix Reader::operator()(const std::string& filename)
+Matrix Read(const int file, const int size)
 {
-    int file = open(filename.c_str(), O_RDONLY);
-
-    off_t size = lseek(file, 0, SEEK_END);
-
     char* mappedData = static_cast<char*>(mmap(nullptr, size, PROT_READ, MAP_PRIVATE, file, 0));
 
     madvise(mappedData, size, MADV_SEQUENTIAL);
@@ -70,35 +66,86 @@ Matrix Reader::operator()(const std::string& filename)
     return { R, G, B, dimX, dimY, colorMax};
 }
 
-void error(std::string op, std::string what)
+void Write(const Matrix& m, const std::string& filename, const off_t size)
 {
-    std::cerr << "Encountered PPM error during " << op << ": " << what << std::endl;
-}
+    int file = open(filename.c_str(), O_RDWR | O_CREAT, 0666);
 
-void Writer::operator()(Matrix m, std::string filename)
-{
-    try {
-        std::ofstream f {};
+    ftruncate(file, size);
 
-        f.open(filename);
+    char* mappedOut = static_cast<char*>(mmap(nullptr, size, PROT_WRITE, MAP_SHARED, file, 0));
 
-        f << magic_number << std::endl;
+    madvise(mappedOut, size, MADV_SEQUENTIAL);
 
-        f << m.get_x_size() << " " << m.get_y_size() << std::endl;
-        f << m.get_color_max() << std::endl;
+    mappedOut[0] = 'P';
+    mappedOut[1] = '6';
+    mappedOut[2] = '\n';
 
-        auto size { m.get_x_size() * m.get_y_size() };
-        auto R { m.get_R() }, G { m.get_G() }, B { m.get_B() };
-        auto it_R { R }, it_G { G }, it_B { B };
+    mappedOut += 3;
 
-        while (it_R < R + size && it_G < G + size && it_B < B + size) {
-            f << *it_R++
-              << *it_G++
-              << *it_B++;
-        }
+    char buffer[4];
 
-        f.close();
-    } catch (std::runtime_error e) {
-        error("writing", e.what());
+    int i = 0;
+    int num = m.get_x_size();
+
+    while(num > 0) {
+        buffer[i++] = '0' + (num % 10);
+        num /= 10;
     }
+
+    int end = i-1;
+
+    while(-1 < end) {
+        *mappedOut++ = buffer[end--];
+    }
+
+    *mappedOut = ' ';
+    mappedOut++;
+
+    i = 0;
+    num = m.get_x_size();
+
+    while(num > 0) {
+        buffer[i++] = '0' + (num % 10);
+        num /= 10;
+    }
+
+    end = i-1;
+
+    while(-1 < end) {
+        *mappedOut++ = buffer[end--];
+    }
+
+    *mappedOut = '\n';
+    mappedOut++;
+
+    i = 0;
+    num = m.get_color_max();
+
+    while(num > 0) {
+        buffer[i++] = '0' + (num % 10);
+        num /= 10;
+    }
+
+    end = i-1;
+
+    while(-1 < end) {
+        *mappedOut++ = buffer[end--];
+    }
+
+    *mappedOut++ = '\n';
+
+    unsigned size = m.get_x_size() * m.get_y_size();
+
+    auto R { m.get_R() }, G { m.get_G() }, B { m.get_B() };
+    auto it_R { R }, it_G { G }, it_B { B };
+
+    while (it_R < R + size && it_G < G + size && it_B < B + size) {
+        *mappedOut++ = *it_R++;
+        *mappedOut++ = *it_G++;
+        *mappedOut++ = *it_B++;
+    }
+
+    msync(mappedOut, size, MS_SYNC);
+    munmap(mappedOut, size);
+    close(file);
 }

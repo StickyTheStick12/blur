@@ -23,55 +23,79 @@ Matrix Blur(Matrix& m, const int radius)
 
     for (int x = 0; x < xSize; ++x) {
         for (int y = 0; y < ySize; y += 4) {
-            __m256d n = _mm256_set1_pd(w[0]);
+            // Initialize sum vectors for R, G, B, and weight accumulation
+            __m256d sum_r = _mm256_setzero_pd();
+            __m256d sum_g = _mm256_setzero_pd();
+            __m256d sum_b = _mm256_setzero_pd();
+            __m256d sum_w = _mm256_setzero_pd();
 
+            // Load weight for the center pixel
+            __m256d w0 = _mm256_set1_pd(w[0]);
+
+            // Load the pixel values at (x, y) for R, G, B
             __m256d r = _mm256_set_pd(m.r(x, y + 3), m.r(x, y + 2), m.r(x, y + 1), m.r(x, y));
             __m256d g = _mm256_set_pd(m.g(x, y + 3), m.g(x, y + 2), m.g(x, y + 1), m.g(x, y));
             __m256d b = _mm256_set_pd(m.b(x, y + 3), m.b(x, y + 2), m.b(x, y + 1), m.b(x, y));
 
-            _mm256_mul_pd(r, n);
-            _mm256_mul_pd(g, n);
-            _mm256_mul_pd(b, n);
+            // Apply weight and accumulate
+            sum_r = _mm256_add_pd(sum_r, _mm256_mul_pd(r, w0));
+            sum_g = _mm256_add_pd(sum_g, _mm256_mul_pd(g, w0));
+            sum_b = _mm256_add_pd(sum_b, _mm256_mul_pd(b, w0));
+            sum_w = _mm256_add_pd(sum_w, w0);
 
             // Loop through the kernel radius
             for (int wi = 1; wi <= radius; ++wi) {
-                __m256d wc = _mm256_set1_pd(w[wi]);
+                double wc = w[wi];
+                __m256d weight = _mm256_set1_pd(wc);
 
-                // Handle left side (x - wi)
+                // Handle x - wi (left side)
                 int x_left = x - wi;
                 if (x_left >= 0) {
                     __m256d r_left = _mm256_set_pd(m.r(x_left, y + 3), m.r(x_left, y + 2), m.r(x_left, y + 1), m.r(x_left, y));
                     __m256d g_left = _mm256_set_pd(m.g(x_left, y + 3), m.g(x_left, y + 2), m.g(x_left, y + 1), m.g(x_left, y));
                     __m256d b_left = _mm256_set_pd(m.b(x_left, y + 3), m.b(x_left, y + 2), m.b(x_left, y + 1), m.b(x_left, y));
 
-                    r = _mm256_add_pd(r, _mm256_mul_pd(r_left, wc));
-                    g = _mm256_add_pd(g, _mm256_mul_pd(g_left, wc));
-                    b = _mm256_add_pd(b, _mm256_mul_pd(b_left, wc));
-                    n = _mm256_add_pd(n, wc);
+                    sum_r = _mm256_add_pd(sum_r, _mm256_mul_pd(r_left, weight));
+                    sum_g = _mm256_add_pd(sum_g, _mm256_mul_pd(g_left, weight));
+                    sum_b = _mm256_add_pd(sum_b, _mm256_mul_pd(b_left, weight));
+                    sum_w = _mm256_add_pd(sum_w, weight);
                 }
 
+                // Handle x + wi (right side)
                 int x_right = x + wi;
                 if (x_right < xSize) {
                     __m256d r_right = _mm256_set_pd(m.r(x_right, y + 3), m.r(x_right, y + 2), m.r(x_right, y + 1), m.r(x_right, y));
                     __m256d g_right = _mm256_set_pd(m.g(x_right, y + 3), m.g(x_right, y + 2), m.g(x_right, y + 1), m.g(x_right, y));
                     __m256d b_right = _mm256_set_pd(m.b(x_right, y + 3), m.b(x_right, y + 2), m.b(x_right, y + 1), m.b(x_right, y));
 
-                    r = _mm256_add_pd(r, _mm256_mul_pd(r_right, wc));
-                    g = _mm256_add_pd(g, _mm256_mul_pd(g_right, wc));
-                    b = _mm256_add_pd(b, _mm256_mul_pd(b_right, wc));
-                    n = _mm256_add_pd(n, wc);
+                    sum_r = _mm256_add_pd(sum_r, _mm256_mul_pd(r_right, weight));
+                    sum_g = _mm256_add_pd(sum_g, _mm256_mul_pd(g_right, weight));
+                    sum_b = _mm256_add_pd(sum_b, _mm256_mul_pd(b_right, weight));
+                    sum_w = _mm256_add_pd(sum_w, weight);
                 }
             }
 
             // Normalize the sum by dividing by the total weight
-            r = _mm256_div_pd(r, n);
-            g = _mm256_div_pd(g, n);
-            b = _mm256_div_pd(b, n);
+            sum_r = _mm256_div_pd(sum_r, sum_w);
+            sum_g = _mm256_div_pd(sum_g, sum_w);
+            sum_b = _mm256_div_pd(sum_b, sum_w);
 
-            // Store the results back in the scratch matrix
-            _mm256_storeu_pd(reinterpret_cast<double *>(&scratch.r(x, y)), r);
-            _mm256_storeu_pd(reinterpret_cast<double *>(&scratch.g(x, y)), g);
-            _mm256_storeu_pd(reinterpret_cast<double *>(&scratch.b(x, y)), b);
+            double results_r[4], results_g[4], results_b[4];
+            _mm256_storeu_pd(results_r, sum_r);
+            _mm256_storeu_pd(results_g, sum_g);
+            _mm256_storeu_pd(results_b, sum_b);
+
+            // Clamp and store each pixel
+            for (int i = 0; i < 4; ++i) {
+                double r_final = results_r[i];
+                double g_final = results_g[i];
+                double b_final = results_b[i];
+
+                // Clamp the values
+                scratch.r(x, y + i) = static_cast<unsigned char>(std::min(255.0, std::max(0.0, r_final)));
+                scratch.g(x, y + i) = static_cast<unsigned char>(std::min(255.0, std::max(0.0, g_final)));
+                scratch.b(x, y + i) = static_cast<unsigned char>(std::min(255.0, std::max(0.0, b_final)));
+            }
         }
     }
 
@@ -111,9 +135,9 @@ Matrix Blur(Matrix& m, const int radius)
             m.b(x, y) = b / n;
         }
     }
-
     return m;
 }
+
 Matrix blur(Matrix m, const int radius)
     {
         Matrix scratch{3000};

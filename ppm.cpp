@@ -103,7 +103,7 @@ void Write(const Matrix& m, const std::string& filename, const off_t fileSize)
     mappedOut++;
 
     i = 0;
-    num = m.get_x_size();
+    num = m.get_y_size();
 
     while(num > 0) {
         buffer[i++] = '0' + (num % 10);

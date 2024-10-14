@@ -4,7 +4,6 @@
 #include <fcntl.h>
 #include <unistd.h>
 
-
 Matrix Read(const int file, const long size)
 {
     char* mappedData = static_cast<char*>(mmap(nullptr, size, PROT_READ, MAP_PRIVATE, file, 0));
@@ -49,6 +48,8 @@ Matrix Read(const int file, const long size)
         colorMax = colorMax*10 + (mappedData[0] - '0');
         mappedData++;
     }
+
+    mappedData++;
 
     unsigned char* R = new unsigned char[totalSize];
     unsigned char* G = new unsigned char[totalSize];

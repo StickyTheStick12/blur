@@ -9,5 +9,6 @@ constexpr unsigned max_radius{1000};
 void get_weights(int n, double *weights_out);
 
 Matrix Blur(Matrix& m, int radius);
+Matrix blur(Matrix m, const int radius);
 
 #endif

@@ -50,9 +50,9 @@ Matrix Blur(Matrix& m, const int radius)
                 // Handle x - wi (left side)
                 int x_left = x - wi;
                 if (x_left >= 0) {
-                    __m256d r_left = _mm256_set_pd(m.r(x_left, y + 3), m.r(x_left, y + 2), m.r(x_left, y + 1), m.r(x_left, y));
-                    __m256d g_left = _mm256_set_pd(m.g(x_left, y + 3), m.g(x_left, y + 2), m.g(x_left, y + 1), m.g(x_left, y));
-                    __m256d b_left = _mm256_set_pd(m.b(x_left, y + 3), m.b(x_left, y + 2), m.b(x_left, y + 1), m.b(x_left, y));
+                    __m256d r_left = _mm256_set_pd(m.r(x_left + 3, y + 3), m.r(x_left + 2, y + 2), m.r(x_left + 1, y + 1), m.r(x_left, y));
+                    __m256d g_left = _mm256_set_pd(m.g(x_left + 3, y + 3), m.g(x_left + 2, y + 2), m.g(x_left + 1, y + 1), m.g(x_left, y));
+                    __m256d b_left = _mm256_set_pd(m.b(x_left + 3, y + 3), m.b(x_left + 2, y + 2), m.b(x_left + 1, y + 1), m.b(x_left, y));
                     __m256d w_left = _mm256_set1_pd(wc);
 
                     sum_r = _mm256_add_pd(sum_r, _mm256_mul_pd(r_left, w_left));
@@ -64,9 +64,9 @@ Matrix Blur(Matrix& m, const int radius)
                 // Handle x + wi (right side)
                 int x_right = x + wi;
                 if (x_right < m.get_x_size()) {
-                    __m256d r_right = _mm256_set_pd(m.r(x_right, y + 3), m.r(x_right, y + 2), m.r(x_right, y + 1), m.r(x_right, y));
-                    __m256d g_right = _mm256_set_pd(m.g(x_right, y + 3), m.g(x_right, y + 2), m.g(x_right, y + 1), m.g(x_right, y));
-                    __m256d b_right = _mm256_set_pd(m.b(x_right, y + 3), m.b(x_right, y + 2), m.b(x_right, y + 1), m.b(x_right, y));
+                    __m256d r_right = _mm256_set_pd(m.r(x_right + 3, y + 3), m.r(x_right + 2, y + 2), m.r(x_right + 1, y + 1), m.r(x_right, y));
+                    __m256d g_right = _mm256_set_pd(m.g(x_right + 3, y + 3), m.g(x_right + 2, y + 2), m.g(x_right + 1, y + 1), m.g(x_right, y));
+                    __m256d b_right = _mm256_set_pd(m.b(x_right + 3, y + 3), m.b(x_right + 2, y + 2), m.b(x_right + 1, y + 1), m.b(x_right, y));
                     __m256d w_right = _mm256_set1_pd(wc);
 
                     sum_r = _mm256_add_pd(sum_r, _mm256_mul_pd(r_right, w_right));
@@ -126,3 +126,81 @@ Matrix Blur(Matrix& m, const int radius)
 
     return m;
 }
+
+Matrix blur(Matrix m, const int radius)
+    {
+        Matrix scratch{3000};
+        auto dst{m};
+
+        for (auto x{0}; x < dst.get_x_size(); x++)
+        {
+            for (auto y{0}; y < dst.get_y_size(); y++)
+            {
+                double w[max_radius]{};
+                GetWeights(radius, w);
+
+                auto r{w[0] * dst.r(x, y)}, g{w[0] * dst.g(x, y)}, b{w[0] * dst.b(x, y)}, n{w[0]};
+
+                for (auto wi{1}; wi <= radius; wi++)
+                {
+                    auto wc{w[wi]};
+                    auto x2{x - wi};
+                    if (x2 >= 0)
+                    {
+                        r += wc * dst.r(x2, y);
+                        g += wc * dst.g(x2, y);
+                        b += wc * dst.b(x2, y);
+                        n += wc;
+                    }
+                    x2 = x + wi;
+                    if (x2 < dst.get_x_size())
+                    {
+                        r += wc * dst.r(x2, y);
+                        g += wc * dst.g(x2, y);
+                        b += wc * dst.b(x2, y);
+                        n += wc;
+                    }
+                }
+                scratch.r(x, y) = r / n;
+                scratch.g(x, y) = g / n;
+                scratch.b(x, y) = b / n;
+            }
+        }
+
+        for (auto x{0}; x < dst.get_x_size(); x++)
+        {
+            for (auto y{0}; y < dst.get_y_size(); y++)
+            {
+                double w[max_radius]{};
+                GetWeights(radius, w);
+
+                auto r{w[0] * scratch.r(x, y)}, g{w[0] * scratch.g(x, y)}, b{w[0] * scratch.b(x, y)}, n{w[0]};
+
+                for (auto wi{1}; wi <= radius; wi++)
+                {
+                    auto wc{w[wi]};
+                    auto y2{y - wi};
+                    if (y2 >= 0)
+                    {
+                        r += wc * scratch.r(x, y2);
+                        g += wc * scratch.g(x, y2);
+                        b += wc * scratch.b(x, y2);
+                        n += wc;
+                    }
+                    y2 = y + wi;
+                    if (y2 < dst.get_y_size())
+                    {
+                        r += wc * scratch.r(x, y2);
+                        g += wc * scratch.g(x, y2);
+                        b += wc * scratch.b(x, y2);
+                        n += wc;
+                    }
+                }
+                dst.r(x, y) = r / n;
+                dst.g(x, y) = g / n;
+                dst.b(x, y) = b / n;
+            }
+        }
+
+        return dst;
+    }

@@ -50,6 +50,8 @@ Matrix Read(const int file, const long size)
         mappedData++;
     }
 
+    mappedData++;
+
     unsigned char* R = new unsigned char[totalSize];
     unsigned char* G = new unsigned char[totalSize];
     unsigned char* B = new unsigned char[totalSize];

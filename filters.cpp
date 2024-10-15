@@ -37,16 +37,15 @@ Matrix Blur(Matrix& m, const int radius)
             __m256d g = _mm256_set_pd(m.g(x, y + 3), m.g(x, y + 2), m.g(x, y + 1), m.g(x, y));
             __m256d b = _mm256_set_pd(m.b(x, y + 3), m.b(x, y + 2), m.b(x, y + 1), m.b(x, y));
 
-            // Apply weight and accumulate
+            // Apply weight for the center pixel
             sum_r = _mm256_add_pd(sum_r, _mm256_mul_pd(r, w0));
             sum_g = _mm256_add_pd(sum_g, _mm256_mul_pd(g, w0));
             sum_b = _mm256_add_pd(sum_b, _mm256_mul_pd(b, w0));
             sum_w = _mm256_add_pd(sum_w, w0);
 
-            // Loop through the kernel radius
-            for (int wi = 1; wi <= radius; ++wi) {
-                double wc = w[wi];
-                __m256d weight = _mm256_set1_pd(wc);
+            // Loop through the kernel radius, optimized for multiples of 4
+            for (int wi = 1; wi <= radius - 3; wi += 4) {
+                __m256d weight = _mm256_set_pd(w[wi + 3], w[wi + 2], w[wi + 1], w[wi]);
 
                 // Handle x - wi (left side)
                 int x_left = x - wi;
@@ -67,6 +66,38 @@ Matrix Blur(Matrix& m, const int radius)
                     __m256d r_right = _mm256_set_pd(m.r(x_right, y + 3), m.r(x_right, y + 2), m.r(x_right, y + 1), m.r(x_right, y));
                     __m256d g_right = _mm256_set_pd(m.g(x_right, y + 3), m.g(x_right, y + 2), m.g(x_right, y + 1), m.g(x_right, y));
                     __m256d b_right = _mm256_set_pd(m.b(x_right, y + 3), m.b(x_right, y + 2), m.b(x_right, y + 1), m.b(x_right, y));
+
+                    sum_r = _mm256_add_pd(sum_r, _mm256_mul_pd(r_right, weight));
+                    sum_g = _mm256_add_pd(sum_g, _mm256_mul_pd(g_right, weight));
+                    sum_b = _mm256_add_pd(sum_b, _mm256_mul_pd(b_right, weight));
+                    sum_w = _mm256_add_pd(sum_w, weight);
+                }
+            }
+
+            // Handle remaining weights (if any)
+            for (int wi = radius - (radius % 4) + 1; wi <= radius; ++wi) {
+                double wc = w[wi];
+                __m256d weight = _mm256_set1_pd(wc);
+
+                // Handle x - wi (left side)
+                int x_left = x - wi;
+                if (x_left >= 0) {
+                    __m256d r_left = _mm256_set1_pd(m.r(x_left, y));
+                    __m256d g_left = _mm256_set1_pd(m.g(x_left, y));
+                    __m256d b_left = _mm256_set1_pd(m.b(x_left, y));
+
+                    sum_r = _mm256_add_pd(sum_r, _mm256_mul_pd(r_left, weight));
+                    sum_g = _mm256_add_pd(sum_g, _mm256_mul_pd(g_left, weight));
+                    sum_b = _mm256_add_pd(sum_b, _mm256_mul_pd(b_left, weight));
+                    sum_w = _mm256_add_pd(sum_w, weight);
+                }
+
+                // Handle x + wi (right side)
+                int x_right = x + wi;
+                if (x_right < xSize) {
+                    __m256d r_right = _mm256_set1_pd(m.r(x_right, y));
+                    __m256d g_right = _mm256_set1_pd(m.g(x_right, y));
+                    __m256d b_right = _mm256_set1_pd(m.b(x_right, y));
 
                     sum_r = _mm256_add_pd(sum_r, _mm256_mul_pd(r_right, weight));
                     sum_g = _mm256_add_pd(sum_g, _mm256_mul_pd(g_right, weight));
@@ -100,41 +131,38 @@ Matrix Blur(Matrix& m, const int radius)
     }
 
     // Horizontal blur
-    for (int x = 0; x < xSize; ++x) {
-        for (int y = 0; y < ySize; ++y) {
-            double r = w[0] * scratch.r(x, y);
-            double g = w[0] * scratch.g(x, y);
-            double b = w[0] * scratch.b(x, y);
-            double n = w[0];
+    for (int x = 0; x < xSize; x++)
+    {
+        for (int y = 0; y < ySize; y++)
+        {
+            auto r{w[0] * scratch.r(x, y)}, g{w[0] * scratch.g(x, y)}, b{w[0] * scratch.b(x, y)}, n{w[0]};
 
-            for (int wi = 1; wi <= radius; ++wi) {
-                double wc = w[wi];
-
-                // Handle y - wi
-                int y_left = y - wi;
-                if (y_left >= 0) {
-                    r += wc * scratch.r(x, y_left);
-                    g += wc * scratch.g(x, y_left);
-                    b += wc * scratch.b(x, y_left);
+            for (auto wi{1}; wi <= radius; wi++)
+            {
+                auto wc{w[wi]};
+                auto y2{y - wi};
+                if (y2 >= 0)
+                {
+                    r += wc * scratch.r(x, y2);
+                    g += wc * scratch.g(x, y2);
+                    b += wc * scratch.b(x, y2);
                     n += wc;
                 }
-
-                // Handle y + wi
-                int y_right = y + wi;
-                if (y_right < ySize) {
-                    r += wc * scratch.r(x, y_right);
-                    g += wc * scratch.g(x, y_right);
-                    b += wc * scratch.b(x, y_right);
+                y2 = y + wi;
+                if (y2 < m.get_y_size())
+                {
+                    r += wc * scratch.r(x, y2);
+                    g += wc * scratch.g(x, y2);
+                    b += wc * scratch.b(x, y2);
                     n += wc;
                 }
             }
-
-            // Normalize and store the final blurred pixel back into the original matrix
             m.r(x, y) = r / n;
             m.g(x, y) = g / n;
             m.b(x, y) = b / n;
         }
     }
+
     return m;
 }
 

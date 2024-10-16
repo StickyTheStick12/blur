@@ -187,7 +187,7 @@ void Blur(std::shared_ptr<Matrix> m, int radius, int startPos, int endPos)
     }
 }
 
-Matrix Blur(Matrix& m, const int radius)
+void Blur(Matrix& m, const int radius)
 {
     Matrix scratch(3000);  // Assuming a temp buffer size of 3000, replace this with your dynamic size
     double w[max_radius];
@@ -317,15 +317,15 @@ Matrix Blur(Matrix& m, const int radius)
             _mm256_storeu_pd(results_b, sum_b);
             _mm256_storeu_pd(result_w, sum_w);
 
-            rSum += results_r[0] + results_r[1] + results_r[2] + results_r[3];
+            rSum += results_r[0]+ results_r[1] + results_r[2] + results_r[3];
             gSum += results_g[0] + results_g[1] + results_g[2] + results_g[3];
             bSum += results_b[0] + results_b[1] + results_b[2] + results_b[3];
             wSum += result_w[0] + result_w[1] + result_w[2] + result_w[3];
 
             // Clamp the values
-            scratch.r(x, y) = static_cast<unsigned char>(std::min(255.0, std::max(0.0, rSum/wSum)));
-            scratch.g(x, y) = static_cast<unsigned char>(std::min(255.0, std::max(0.0, gSum/wSum)));
-            scratch.b(x, y) = static_cast<unsigned char>(std::min(255.0, std::max(0.0, bSum/wSum)));
+            scratch.r(x, y) = rSum/wSum;
+            scratch.g(x, y) = gSum/wSum;
+            scratch.b(x, y) = bSum/wSum;
         }
     }
 
@@ -354,57 +354,57 @@ Matrix Blur(Matrix& m, const int radius)
                 __m256d weight = _mm256_set_pd(w[wi + 3], w[wi + 2], w[wi + 1], w[wi]);
 
                 // Handle x - wi (left side)
-                int x_left = x - (wi+3);
-                if (x_left >= 0) {
-                    __m256d r_left = _mm256_set_pd(scratch.r(x_left+3, y), scratch.r(x_left+2, y), scratch.r(x_left+1, y), scratch.r(x_left, y));
-                    __m256d g_left = _mm256_set_pd(scratch.g(x_left+3, y), scratch.g(x_left+2, y), scratch.g(x_left+1, y), scratch.g(x_left, y));
-                    __m256d b_left = _mm256_set_pd(scratch.b(x_left+3, y), scratch.b(x_left+2, y), scratch.b(x_left+1, y), scratch.b(x_left, y));
+                int y_left = y - (wi+3);
+                if (y_left >= 0) {
+                    __m256d r_left = _mm256_set_pd(scratch.r(x, y_left+3), scratch.r(x, y_left+2), scratch.r(x, y_left+1), scratch.r(x, y_left));
+                    __m256d g_left = _mm256_set_pd(scratch.g(x, y_left+3), scratch.g(x, y_left+2), scratch.g(x, y_left+1), scratch.g(x, y_left));
+                    __m256d b_left = _mm256_set_pd(scratch.b(x, y_left+3), scratch.b(x, y_left+2), scratch.b(x, y_left+1), scratch.b(x, y_left));
 
                     sum_r = _mm256_add_pd(sum_r, _mm256_mul_pd(r_left, weight));
                     sum_g = _mm256_add_pd(sum_g, _mm256_mul_pd(g_left, weight));
                     sum_b = _mm256_add_pd(sum_b, _mm256_mul_pd(b_left, weight));
                     sum_w = _mm256_add_pd(sum_w, weight);
                 }
-                else if(x_left+3 >= 0)
+                else if(y_left+3 >= 0)
                 {
                     int temp = wi;
-                    x_left += 3;
-                    while(x_left >= 0)
+                    y_left += 3;
+                    while(y_left >= 0)
                     {
-                        rSum += w[temp] * scratch.r(x_left, y);
-                        gSum += w[temp] * scratch.g(x_left, y);
-                        bSum += w[temp] * scratch.b(x_left, y);
+                        rSum += w[temp] * scratch.r(x, y_left);
+                        gSum += w[temp] * scratch.g(x, y_left);
+                        bSum += w[temp] * scratch.b(x, y_left);
                         wSum += w[temp];
 
-                        x_left--;
+                        y_left--;
                         temp--;
                     }
                 }
 
                 // Handle x + wi (right side)
-                int x_right = x + wi+3;
-                if (x_right < xSize) {
-                    __m256d r_right = _mm256_set_pd(scratch.r(x_right, y), scratch.r(x_right-1, y), scratch.r(x_right-2, y), scratch.r(x_right-3, y));
-                    __m256d g_right = _mm256_set_pd(scratch.g(x_right, y), scratch.g(x_right-1, y), scratch.g(x_right-2, y), scratch.g(x_right-3, y));
-                    __m256d b_right = _mm256_set_pd(scratch.b(x_right, y), scratch.b(x_right-1, y), scratch.b(x_right-2, y), scratch.b(x_right-3, y));
+                int y_right = y + wi+3;
+                if (y_right < ySize) {
+                    __m256d r_right = _mm256_set_pd(scratch.r(x, y_right), scratch.r(x, y_right-1), scratch.r(x, y_right-2), scratch.r(x, y_right-3));
+                    __m256d g_right = _mm256_set_pd(scratch.g(x, y_right), scratch.g(x, y_right-1), scratch.g(x, y_right-2), scratch.g(x, y_right-3));
+                    __m256d b_right = _mm256_set_pd(scratch.b(x, y_right), scratch.b(x, y_right-1), scratch.b(x, y_right-2), scratch.b(x, y_right-3));
 
                     sum_r = _mm256_add_pd(sum_r, _mm256_mul_pd(r_right, weight));
                     sum_g = _mm256_add_pd(sum_g, _mm256_mul_pd(g_right, weight));
                     sum_b = _mm256_add_pd(sum_b, _mm256_mul_pd(b_right, weight));
                     sum_w = _mm256_add_pd(sum_w, weight);
                 }
-                else if(x_right-3 < xSize)
+                else if(y_right-3 < ySize)
                 {
-                    x_right -= 3;
+                    y_right -= 3;
                     int temp = wi;
-                    while(x_right < xSize)
+                    while(y_right < xSize)
                     {
-                        rSum += w[temp] * scratch.r(x_right, y);
-                        gSum += w[temp] * scratch.g(x_right, y);
-                        bSum += w[temp] * scratch.b(x_right, y);
+                        rSum += w[temp] * scratch.r(x, y_right);
+                        gSum += w[temp] * scratch.g(x, y_right);
+                        bSum += w[temp] * scratch.b(x, y_right);
                         wSum += w[temp];
 
-                        x_right++;
+                        y_right++;
                         temp++;
                     }
                 }
@@ -452,14 +452,11 @@ Matrix Blur(Matrix& m, const int radius)
             bSum += results_b[0] + results_b[1] + results_b[2] + results_b[3];
             wSum += result_w[0] + result_w[1] + result_w[2] + result_w[3];
 
-            // Clamp the values
-            m.r(x, y) = static_cast<unsigned char>(std::min(255.0, std::max(0.0, rSum/wSum)));
-            m.g(x, y) = static_cast<unsigned char>(std::min(255.0, std::max(0.0, gSum/wSum)));
-            m.b(x, y) = static_cast<unsigned char>(std::min(255.0, std::max(0.0, bSum/wSum)));
+            m.r(x, y) = rSum/wSum;
+            m.g(x, y) = gSum/wSum;
+            m.b(x, y) = bSum/wSum;
         }
     }
-
-    return m;
 }
 
 Matrix blur(Matrix m, const int radius)
@@ -471,7 +468,7 @@ Matrix blur(Matrix m, const int radius)
     {
         for (auto y{0}; y < dst.get_y_size(); y++)
         {
-            double w[max_radius]{};
+            double w[max_radius];
             GetWeights(radius, w);
 
             auto r{w[0] * dst.r(x, y)}, g{w[0] * dst.g(x, y)}, b{w[0] * dst.b(x, y)}, n{w[0]};

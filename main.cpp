@@ -93,9 +93,9 @@ int main(int argc, char const* argv[]) {
         str++;
     }
 
-    Matrix blurred = Blur(m, radius);
+    Blur(m, radius);
 
-    Write(blurred, argv[3], size);
+    Write(m, argv[3], size);
 
     return 0;
 }

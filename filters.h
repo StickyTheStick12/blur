@@ -12,7 +12,7 @@ void get_weights(int n, double *weights_out);
 
 void Blur(std::shared_ptr<Matrix> m, int radius, int startPos, int endPos);
 
-Matrix Blur(Matrix& m, int radius);
+void Blur(Matrix& m, int radius);
 Matrix blur(Matrix m, const int radius);
 
 #endif

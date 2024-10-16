@@ -24,13 +24,13 @@ Matrix Blur(Matrix& m, const int radius)
 
     for (int x = 0; x < xSize; ++x) {
         for (int y = 0; y < ySize; ++y) {
-            // Initialize sum vectors for R, G, B, and weight accumulation
-            __m256d sum_r = _mm256_setzero_pd();
-            __m256d sum_g = _mm256_setzero_pd();
-            __m256d sum_b = _mm256_setzero_pd();
-            __m256d sum_w = _mm256_setzero_pd();
-
             // Load weight for the center pixel
+            double rSum = 0;
+            double gSum = 0;
+            double bSum = 0;
+            double wSum = 0;
+
+            __m256d sum_w = _mm256_setzero_pd();
             __m256d w0 = _mm256_set_pd(w[0], 0, 0, 0);
 
             // Load the pixel values at (x, y) for R, G, B
@@ -39,9 +39,9 @@ Matrix Blur(Matrix& m, const int radius)
             __m256d b = _mm256_set_pd(m.b(x, y), 0, 0, 0);
 
             // Apply weight for the center pixel
-            sum_r = _mm256_add_pd(sum_r, _mm256_mul_pd(r, w0));
-            sum_g = _mm256_add_pd(sum_g, _mm256_mul_pd(g, w0));
-            sum_b = _mm256_add_pd(sum_b, _mm256_mul_pd(b, w0));
+            __m256d sum_r = _mm256_mul_pd(r, w0);
+            __m256d sum_g = _mm256_mul_pd(g, w0);
+            __m256d sum_b = _mm256_mul_pd(b, w0);
             sum_w = _mm256_add_pd(sum_w, w0);
 
             // Loop through the kernel radius, optimized for multiples of 4
@@ -49,20 +49,35 @@ Matrix Blur(Matrix& m, const int radius)
                 __m256d weight = _mm256_set_pd(w[wi + 3], w[wi + 2], w[wi + 1], w[wi]);
 
                 // Handle x - wi (left side)
-                int x_left = x - wi;
+                int x_left = x - (wi+3);
                 if (x_left >= 0) {
-                    __m256d r_left = _mm256_set_pd(m.r(x_left, y + 3), m.r(x_left, y + 2), m.r(x_left, y + 1), m.r(x_left, y));
-                    __m256d g_left = _mm256_set_pd(m.g(x_left, y + 3), m.g(x_left, y + 2), m.g(x_left, y + 1), m.g(x_left, y));
-                    __m256d b_left = _mm256_set_pd(m.b(x_left, y + 3), m.b(x_left, y + 2), m.b(x_left, y + 1), m.b(x_left, y));
+                    __m256d r_left = _mm256_set_pd(m.r(x_left-3, y), m.r(x_left-2, y), m.r(x_left-1, y), m.r(x_left, y));
+                    __m256d g_left = _mm256_set_pd(m.g(x_left-3, y), m.g(x_left-2, y), m.g(x_left-1, y), m.g(x_left, y));
+                    __m256d b_left = _mm256_set_pd(m.b(x_left-3, y), m.b(x_left-2, y), m.b(x_left-1, y), m.b(x_left, y));
 
                     sum_r = _mm256_add_pd(sum_r, _mm256_mul_pd(r_left, weight));
                     sum_g = _mm256_add_pd(sum_g, _mm256_mul_pd(g_left, weight));
                     sum_b = _mm256_add_pd(sum_b, _mm256_mul_pd(b_left, weight));
                     sum_w = _mm256_add_pd(sum_w, weight);
                 }
+                else if(x_left+3 >= 0)
+                {
+                    int temp = wi;
+                    x_left += 3;
+                    while(x_left >= 0)
+                    {
+                        rSum += w[temp] * m.r(x_left, y);
+                        gSum += w[temp] * m.g(x_left, y);
+                        bSum += w[temp] * m.b(x_left, y);
+                        wSum += w[temp];
+
+                        x_left--;
+                        temp--;
+                    }
+                }
 
                 // Handle x + wi (right side)
-                int x_right = x + wi;
+                int x_right = x + wi+3;
                 if (x_right < xSize) {
                     __m256d r_right = _mm256_set_pd(m.r(x_right+3, y), m.r(x_right+2, y), m.r(x_right+1, y), m.r(x_right, y));
                     __m256d g_right = _mm256_set_pd(m.g(x_right+3, y), m.g(x_right+2, y), m.g(x_right+1, y), m.g(x_right, y));
@@ -72,6 +87,21 @@ Matrix Blur(Matrix& m, const int radius)
                     sum_g = _mm256_add_pd(sum_g, _mm256_mul_pd(g_right, weight));
                     sum_b = _mm256_add_pd(sum_b, _mm256_mul_pd(b_right, weight));
                     sum_w = _mm256_add_pd(sum_w, weight);
+                }
+                else if(x_right-3 < xSize)
+                {
+                    x_right -= 3;
+                    int temp = wi;
+                    while(x_right < xSize)
+                    {
+                        rSum += w[temp] * m.r(x_right, y);
+                        gSum += w[temp] * m.g(x_right, y);
+                        bSum += w[temp] * m.b(x_right, y);
+                        wSum += w[temp];
+
+                        x_right++;
+                        temp++;
+                    }
                 }
             }
 
@@ -113,10 +143,10 @@ Matrix Blur(Matrix& m, const int radius)
             _mm256_storeu_pd(results_b, sum_b);
             _mm256_storeu_pd(result_w, sum_w);
 
-            double rSum = results_r[0] + results_r[1] + results_r[2] + results_r[3];
-            double gSum = results_g[0] + results_g[1] + results_g[2] + results_g[3];
-            double bSum = results_b[0] + results_b[1] + results_b[2] + results_b[3];
-            double wSum = result_w[0] + result_w[1] + result_w[2] + result_w[3];
+            rSum += results_r[0] + results_r[1] + results_r[2] + results_r[3];
+            gSum += results_g[0] + results_g[1] + results_g[2] + results_g[3];
+            bSum += results_b[0] + results_b[1] + results_b[2] + results_b[3];
+            wSum += result_w[0] + result_w[1] + result_w[2] + result_w[3];
 
             // Clamp the values
             scratch.r(x, y) = static_cast<unsigned char>(std::min(255.0, std::max(0.0, (rSum/wSum))));

@@ -11,7 +11,7 @@ void GetWeights(const int n, double* weightsOut) {
     }
 }
 
-void Blur(std::shared_ptr<Matrix> m, std::shared_ptr<std::barrier<>> barrier, int radius, int startPos, int endPos)
+void Blur(Matrix* m, std::shared_ptr<std::barrier<>> barrier, int radius, int startPos, int endPos)
 {
     Matrix scratch(3000);  // Assuming a temp buffer size of 3000, replace this with your dynamic size
     double w[max_radius];

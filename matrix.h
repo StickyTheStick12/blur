@@ -15,6 +15,7 @@ public:
     Matrix();
     Matrix(unsigned dimension);
     Matrix(unsigned char* R, unsigned char* G, unsigned char* B, unsigned x_size, unsigned y_size, unsigned color_max);
+    Matrix& operator=(const Matrix other);
     ~Matrix();
 
     unsigned get_x_size() const;

@@ -279,34 +279,25 @@ void Blur(Matrix& m, const int radius)
             }
 
             // Handle remaining weights (if any)
-            for (int wi = radius - (radius % 4) + 1; wi <= radius; ++wi) {
+            for (int wi = radius - (radius % 4) + 2; wi <= radius; ++wi) {
                 double wc = w[wi];
-                __m256d weight = _mm256_set1_pd(wc);
 
                 // Handle x - wi (left side)
                 int x_left = x - wi;
                 if (x_left >= 0) {
-                    __m256d r_left = _mm256_set1_pd(m.r(x_left, y));
-                    __m256d g_left = _mm256_set1_pd(m.g(x_left, y));
-                    __m256d b_left = _mm256_set1_pd(m.b(x_left, y));
-
-                    sum_r = _mm256_add_pd(sum_r, _mm256_mul_pd(r_left, weight));
-                    sum_g = _mm256_add_pd(sum_g, _mm256_mul_pd(g_left, weight));
-                    sum_b = _mm256_add_pd(sum_b, _mm256_mul_pd(b_left, weight));
-                    sum_w = _mm256_add_pd(sum_w, weight);
+                    rSum += wc * m.r(x_left, y);
+                    gSum += wc * m.g(x_left, y);
+                    bSum += wc * m.b(x_left, y);
+                    wSum += wc;
                 }
 
                 // Handle x + wi (right side)
                 int x_right = x + wi;
                 if (x_right < xSize) {
-                    __m256d r_right = _mm256_set1_pd(m.r(x_right, y));
-                    __m256d g_right = _mm256_set1_pd(m.g(x_right, y));
-                    __m256d b_right = _mm256_set1_pd(m.b(x_right, y));
-
-                    sum_r = _mm256_add_pd(sum_r, _mm256_mul_pd(r_right, weight));
-                    sum_g = _mm256_add_pd(sum_g, _mm256_mul_pd(g_right, weight));
-                    sum_b = _mm256_add_pd(sum_b, _mm256_mul_pd(b_right, weight));
-                    sum_w = _mm256_add_pd(sum_w, weight);
+                    rSum += wc * m.r(x_right, y);
+                    gSum += wc * m.g(x_right, y);
+                    bSum += wc * m.b(x_right, y);
+                    wSum += wc;
                 }
             }
 
@@ -409,34 +400,25 @@ void Blur(Matrix& m, const int radius)
                 }
             }
 
-            for (int wi = radius - (radius % 4) + 1; wi <= radius; ++wi) {
+            for (int wi = radius - (radius % 4) + 2; wi <= radius; ++wi) {
                 double wc = w[wi];
-                __m256d weight = _mm256_set1_pd(wc);
 
                 // Handle x - wi (left side)
-                int x_left = x - wi;
-                if (x_left >= 0) {
-                    __m256d r_left = _mm256_set1_pd(m.r(x_left, y));
-                    __m256d g_left = _mm256_set1_pd(m.g(x_left, y));
-                    __m256d b_left = _mm256_set1_pd(m.b(x_left, y));
-
-                    sum_r = _mm256_add_pd(sum_r, _mm256_mul_pd(r_left, weight));
-                    sum_g = _mm256_add_pd(sum_g, _mm256_mul_pd(g_left, weight));
-                    sum_b = _mm256_add_pd(sum_b, _mm256_mul_pd(b_left, weight));
-                    sum_w = _mm256_add_pd(sum_w, weight);
+                int y_left = y - wi;
+                if (y_left >= 0) {
+                    rSum += wc * m.r(x, y_left);
+                    gSum += wc * m.g(x, y_left);
+                    bSum += wc * m.b(x, y_left);
+                    wSum += wc;
                 }
 
                 // Handle x + wi (right side)
-                int x_right = x + wi;
-                if (x_right < xSize) {
-                    __m256d r_right = _mm256_set1_pd(m.r(x_right, y));
-                    __m256d g_right = _mm256_set1_pd(m.g(x_right, y));
-                    __m256d b_right = _mm256_set1_pd(m.b(x_right, y));
-
-                    sum_r = _mm256_add_pd(sum_r, _mm256_mul_pd(r_right, weight));
-                    sum_g = _mm256_add_pd(sum_g, _mm256_mul_pd(g_right, weight));
-                    sum_b = _mm256_add_pd(sum_b, _mm256_mul_pd(b_right, weight));
-                    sum_w = _mm256_add_pd(sum_w, weight);
+                int y_right = x + wi;
+                if (y_right < xSize) {
+                    rSum += wc * m.r(x, y_right);
+                    gSum += wc * m.g(x, y_right);
+                    bSum += wc * m.b(x, y_right);
+                    wSum += wc;
                 }
             }
 

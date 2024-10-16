@@ -3,7 +3,6 @@
 #include "ppm.h"
 #include <cmath>
 #include <immintrin.h>
-#include <iostream>
 
 void GetWeights(const int n, double* weightsOut) {
     for (int i = 0; i <= n; ++i) {
@@ -189,7 +188,7 @@ void Blur(std::shared_ptr<Matrix> m, int radius, int startPos, int endPos)
 
 void Blur(Matrix& m, const int radius)
 {
-    Matrix scratch(3000);  // Assuming a temp buffer size of 3000, replace this with your dynamic size
+    Matrix scratch(3000);
     double w[max_radius];
     GetWeights(radius, w);
 
@@ -311,11 +310,11 @@ void Blur(Matrix& m, const int radius)
                 }
             }
 
-            double results_r[4], results_g[4], results_b[4], result_w[4];
-            _mm256_storeu_pd(results_r, sum_r);
-            _mm256_storeu_pd(results_g, sum_g);
-            _mm256_storeu_pd(results_b, sum_b);
-            _mm256_storeu_pd(result_w, sum_w);
+            alignas(32) double results_r[4], results_g[4], results_b[4], result_w[4];
+            _mm256_store_pd(results_r, sum_r);
+            _mm256_store_pd(results_g, sum_g);
+            _mm256_store_pd(results_b, sum_b);
+            _mm256_store_pd(result_w, sum_w);
 
             rSum += results_r[0]+ results_r[1] + results_r[2] + results_r[3];
             gSum += results_g[0] + results_g[1] + results_g[2] + results_g[3];
@@ -441,11 +440,11 @@ void Blur(Matrix& m, const int radius)
                 }
             }
 
-            double results_r[4], results_g[4], results_b[4], result_w[4];
-            _mm256_storeu_pd(results_r, sum_r);
-            _mm256_storeu_pd(results_g, sum_g);
-            _mm256_storeu_pd(results_b, sum_b);
-            _mm256_storeu_pd(result_w, sum_w);
+            alignas(32) double results_r[4], results_g[4], results_b[4], result_w[4];
+            _mm256_store_pd(results_r, sum_r);
+            _mm256_store_pd(results_g, sum_g);
+            _mm256_store_pd(results_b, sum_b);
+            _mm256_store_pd(result_w, sum_w);
 
             rSum += results_r[0] + results_r[1] + results_r[2] + results_r[3];
             gSum += results_g[0] + results_g[1] + results_g[2] + results_g[3];

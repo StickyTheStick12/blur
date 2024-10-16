@@ -3,6 +3,7 @@
 #include "ppm.h"
 #include <cmath>
 #include <immintrin.h>
+#include <iostream>
 
 void GetWeights(const int n, double* weightsOut) {
     for (int i = 0; i <= n; ++i) {
@@ -15,14 +16,14 @@ void GetWeights(const int n, double* weightsOut) {
 Matrix Blur(Matrix& m, const int radius)
 {
     Matrix scratch(3000);  // Assuming a temp buffer size of 3000, replace this with your dynamic size
-    double w[radius];
+    double w[max_radius];
     GetWeights(radius, w);
 
     int xSize = m.get_x_size();
     int ySize = m.get_y_size();
 
     for (int x = 0; x < xSize; ++x) {
-        for (int y = 0; y < ySize; y += 4) {
+        for (int y = 0; y < ySize; ++y) {
             // Initialize sum vectors for R, G, B, and weight accumulation
             __m256d sum_r = _mm256_setzero_pd();
             __m256d sum_g = _mm256_setzero_pd();
@@ -30,12 +31,12 @@ Matrix Blur(Matrix& m, const int radius)
             __m256d sum_w = _mm256_setzero_pd();
 
             // Load weight for the center pixel
-            __m256d w0 = _mm256_set1_pd(w[0]);
+            __m256d w0 = _mm256_set_pd(w[0], 0, 0, 0);
 
             // Load the pixel values at (x, y) for R, G, B
-            __m256d r = _mm256_set_pd(m.r(x, y + 3), m.r(x, y + 2), m.r(x, y + 1), m.r(x, y));
-            __m256d g = _mm256_set_pd(m.g(x, y + 3), m.g(x, y + 2), m.g(x, y + 1), m.g(x, y));
-            __m256d b = _mm256_set_pd(m.b(x, y + 3), m.b(x, y + 2), m.b(x, y + 1), m.b(x, y));
+            __m256d r = _mm256_set_pd(m.r(x, y), 0, 0, 0);
+            __m256d g = _mm256_set_pd(m.g(x, y), 0, 0, 0);
+            __m256d b = _mm256_set_pd(m.b(x, y), 0, 0, 0);
 
             // Apply weight for the center pixel
             sum_r = _mm256_add_pd(sum_r, _mm256_mul_pd(r, w0));
@@ -44,7 +45,7 @@ Matrix Blur(Matrix& m, const int radius)
             sum_w = _mm256_add_pd(sum_w, w0);
 
             // Loop through the kernel radius, optimized for multiples of 4
-            for (int wi = 1; wi <= radius - 3; wi += 4) {
+            for (int wi = 1; wi <= radius; wi += 4) {
                 __m256d weight = _mm256_set_pd(w[wi + 3], w[wi + 2], w[wi + 1], w[wi]);
 
                 // Handle x - wi (left side)
@@ -63,9 +64,9 @@ Matrix Blur(Matrix& m, const int radius)
                 // Handle x + wi (right side)
                 int x_right = x + wi;
                 if (x_right < xSize) {
-                    __m256d r_right = _mm256_set_pd(m.r(x_right, y + 3), m.r(x_right, y + 2), m.r(x_right, y + 1), m.r(x_right, y));
-                    __m256d g_right = _mm256_set_pd(m.g(x_right, y + 3), m.g(x_right, y + 2), m.g(x_right, y + 1), m.g(x_right, y));
-                    __m256d b_right = _mm256_set_pd(m.b(x_right, y + 3), m.b(x_right, y + 2), m.b(x_right, y + 1), m.b(x_right, y));
+                    __m256d r_right = _mm256_set_pd(m.r(x_right+3, y), m.r(x_right+2, y), m.r(x_right+1, y), m.r(x_right, y));
+                    __m256d g_right = _mm256_set_pd(m.g(x_right+3, y), m.g(x_right+2, y), m.g(x_right+1, y), m.g(x_right, y));
+                    __m256d b_right = _mm256_set_pd(m.b(x_right+3, y), m.b(x_right + 2, y), m.b(x_right+1, y), m.b(x_right, y));
 
                     sum_r = _mm256_add_pd(sum_r, _mm256_mul_pd(r_right, weight));
                     sum_g = _mm256_add_pd(sum_g, _mm256_mul_pd(g_right, weight));
@@ -106,34 +107,28 @@ Matrix Blur(Matrix& m, const int radius)
                 }
             }
 
-            // Normalize the sum by dividing by the total weight
-            sum_r = _mm256_div_pd(sum_r, sum_w);
-            sum_g = _mm256_div_pd(sum_g, sum_w);
-            sum_b = _mm256_div_pd(sum_b, sum_w);
-
-            double results_r[4], results_g[4], results_b[4];
+            double results_r[4], results_g[4], results_b[4], result_w[4];
             _mm256_storeu_pd(results_r, sum_r);
             _mm256_storeu_pd(results_g, sum_g);
             _mm256_storeu_pd(results_b, sum_b);
+            _mm256_storeu_pd(result_w, sum_w);
 
-            // Clamp and store each pixel
-            for (int i = 0; i < 4; ++i) {
-                double r_final = results_r[i];
-                double g_final = results_g[i];
-                double b_final = results_b[i];
+            double rSum = results_r[0] + results_r[1] + results_r[2] + results_r[3];
+            double gSum = results_g[0] + results_g[1] + results_g[2] + results_g[3];
+            double bSum = results_b[0] + results_b[1] + results_b[2] + results_b[3];
+            double wSum = result_w[0] + result_w[1] + result_w[2] + result_w[3];
 
-                // Clamp the values
-                scratch.r(x, y + i) = static_cast<unsigned char>(std::min(255.0, std::max(0.0, r_final)));
-                scratch.g(x, y + i) = static_cast<unsigned char>(std::min(255.0, std::max(0.0, g_final)));
-                scratch.b(x, y + i) = static_cast<unsigned char>(std::min(255.0, std::max(0.0, b_final)));
-            }
+            // Clamp the values
+            scratch.r(x, y) = static_cast<unsigned char>(std::min(255.0, std::max(0.0, (rSum/wSum))));
+            scratch.g(x, y) = static_cast<unsigned char>(std::min(255.0, std::max(0.0, gSum/wSum)));
+            scratch.b(x, y) = static_cast<unsigned char>(std::min(255.0, std::max(0.0, bSum/wSum)));
         }
     }
 
     // Horizontal blur
-    for (int x = 0; x < xSize; x++)
+    for (auto x{0}; x < xSize; x++)
     {
-        for (int y = 0; y < ySize; y++)
+        for (auto y{0}; y < ySize; y++)
         {
             auto r{w[0] * scratch.r(x, y)}, g{w[0] * scratch.g(x, y)}, b{w[0] * scratch.b(x, y)}, n{w[0]};
 
@@ -167,79 +162,79 @@ Matrix Blur(Matrix& m, const int radius)
 }
 
 Matrix blur(Matrix m, const int radius)
+{
+    Matrix scratch{3000};
+    auto dst{m};
+
+    for (auto x{0}; x < dst.get_x_size(); x++)
     {
-        Matrix scratch{3000};
-        auto dst{m};
-
-        for (auto x{0}; x < dst.get_x_size(); x++)
+        for (auto y{0}; y < dst.get_y_size(); y++)
         {
-            for (auto y{0}; y < dst.get_y_size(); y++)
+            double w[max_radius]{};
+            GetWeights(radius, w);
+
+            auto r{w[0] * dst.r(x, y)}, g{w[0] * dst.g(x, y)}, b{w[0] * dst.b(x, y)}, n{w[0]};
+
+            for (auto wi{1}; wi <= radius; wi++)
             {
-                double w[max_radius]{};
-                GetWeights(radius, w);
-
-                auto r{w[0] * dst.r(x, y)}, g{w[0] * dst.g(x, y)}, b{w[0] * dst.b(x, y)}, n{w[0]};
-
-                for (auto wi{1}; wi <= radius; wi++)
+                auto wc{w[wi]};
+                auto x2{x - wi};
+                if (x2 >= 0)
                 {
-                    auto wc{w[wi]};
-                    auto x2{x - wi};
-                    if (x2 >= 0)
-                    {
-                        r += wc * dst.r(x2, y);
-                        g += wc * dst.g(x2, y);
-                        b += wc * dst.b(x2, y);
-                        n += wc;
-                    }
-                    x2 = x + wi;
-                    if (x2 < dst.get_x_size())
-                    {
-                        r += wc * dst.r(x2, y);
-                        g += wc * dst.g(x2, y);
-                        b += wc * dst.b(x2, y);
-                        n += wc;
-                    }
+                    r += wc * dst.r(x2, y);
+                    g += wc * dst.g(x2, y);
+                    b += wc * dst.b(x2, y);
+                    n += wc;
                 }
-                scratch.r(x, y) = r / n;
-                scratch.g(x, y) = g / n;
-                scratch.b(x, y) = b / n;
-            }
-        }
-
-        for (auto x{0}; x < dst.get_x_size(); x++)
-        {
-            for (auto y{0}; y < dst.get_y_size(); y++)
-            {
-                double w[max_radius]{};
-                GetWeights(radius, w);
-
-                auto r{w[0] * scratch.r(x, y)}, g{w[0] * scratch.g(x, y)}, b{w[0] * scratch.b(x, y)}, n{w[0]};
-
-                for (auto wi{1}; wi <= radius; wi++)
+                x2 = x + wi;
+                if (x2 < dst.get_x_size())
                 {
-                    auto wc{w[wi]};
-                    auto y2{y - wi};
-                    if (y2 >= 0)
-                    {
-                        r += wc * scratch.r(x, y2);
-                        g += wc * scratch.g(x, y2);
-                        b += wc * scratch.b(x, y2);
-                        n += wc;
-                    }
-                    y2 = y + wi;
-                    if (y2 < dst.get_y_size())
-                    {
-                        r += wc * scratch.r(x, y2);
-                        g += wc * scratch.g(x, y2);
-                        b += wc * scratch.b(x, y2);
-                        n += wc;
-                    }
+                    r += wc * dst.r(x2, y);
+                    g += wc * dst.g(x2, y);
+                    b += wc * dst.b(x2, y);
+                    n += wc;
                 }
-                dst.r(x, y) = r / n;
-                dst.g(x, y) = g / n;
-                dst.b(x, y) = b / n;
             }
+            scratch.r(x, y) = r / n;
+            scratch.g(x, y) = g / n;
+            scratch.b(x, y) = b / n;
         }
-
-        return dst;
     }
+
+    for (auto x{0}; x < dst.get_x_size(); x++)
+    {
+        for (auto y{0}; y < dst.get_y_size(); y++)
+        {
+            double w[max_radius]{};
+            GetWeights(radius, w);
+
+            auto r{w[0] * scratch.r(x, y)}, g{w[0] * scratch.g(x, y)}, b{w[0] * scratch.b(x, y)}, n{w[0]};
+
+            for (auto wi{1}; wi <= radius; wi++)
+            {
+                auto wc{w[wi]};
+                auto y2{y - wi};
+                if (y2 >= 0)
+                {
+                    r += wc * scratch.r(x, y2);
+                    g += wc * scratch.g(x, y2);
+                    b += wc * scratch.b(x, y2);
+                    n += wc;
+                }
+                y2 = y + wi;
+                if (y2 < dst.get_y_size())
+                {
+                    r += wc * scratch.r(x, y2);
+                    g += wc * scratch.g(x, y2);
+                    b += wc * scratch.b(x, y2);
+                    n += wc;
+                }
+            }
+            dst.r(x, y) = r / n;
+            dst.g(x, y) = g / n;
+            dst.b(x, y) = b / n;
+        }
+    }
+
+    return dst;
+}

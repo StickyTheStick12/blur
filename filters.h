@@ -13,7 +13,4 @@ void get_weights(int n, double *weights_out);
 
 void Blur(Matrix* m, std::shared_ptr<std::barrier<>> barrier, int radius, int startPos, int endPos);
 
-void Blur(Matrix& m, int radius);
-Matrix blur(Matrix m, const int radius);
-
 #endif

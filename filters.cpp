@@ -51,9 +51,9 @@ Matrix Blur(Matrix& m, const int radius)
                 // Handle x - wi (left side)
                 int x_left = x - (wi+3);
                 if (x_left >= 0) {
-                    __m256d r_left = _mm256_set_pd(m.r(x_left-3, y), m.r(x_left-2, y), m.r(x_left-1, y), m.r(x_left, y));
-                    __m256d g_left = _mm256_set_pd(m.g(x_left-3, y), m.g(x_left-2, y), m.g(x_left-1, y), m.g(x_left, y));
-                    __m256d b_left = _mm256_set_pd(m.b(x_left-3, y), m.b(x_left-2, y), m.b(x_left-1, y), m.b(x_left, y));
+                    __m256d r_left = _mm256_set_pd(m.r(x_left+3, y), m.r(x_left+2, y), m.r(x_left+1, y), m.r(x_left, y));
+                    __m256d g_left = _mm256_set_pd(m.g(x_left+3, y), m.g(x_left+2, y), m.g(x_left+1, y), m.g(x_left, y));
+                    __m256d b_left = _mm256_set_pd(m.b(x_left+3, y), m.b(x_left+2, y), m.b(x_left+1, y), m.b(x_left, y));
 
                     sum_r = _mm256_add_pd(sum_r, _mm256_mul_pd(r_left, weight));
                     sum_g = _mm256_add_pd(sum_g, _mm256_mul_pd(g_left, weight));
@@ -79,9 +79,9 @@ Matrix Blur(Matrix& m, const int radius)
                 // Handle x + wi (right side)
                 int x_right = x + wi+3;
                 if (x_right < xSize) {
-                    __m256d r_right = _mm256_set_pd(m.r(x_right+3, y), m.r(x_right+2, y), m.r(x_right+1, y), m.r(x_right, y));
-                    __m256d g_right = _mm256_set_pd(m.g(x_right+3, y), m.g(x_right+2, y), m.g(x_right+1, y), m.g(x_right, y));
-                    __m256d b_right = _mm256_set_pd(m.b(x_right+3, y), m.b(x_right + 2, y), m.b(x_right+1, y), m.b(x_right, y));
+                    __m256d r_right = _mm256_set_pd(m.r(x_right, y), m.r(x_right-1, y), m.r(x_right-2, y), m.r(x_right-3, y));
+                    __m256d g_right = _mm256_set_pd(m.g(x_right, y), m.g(x_right-1, y), m.g(x_right-2, y), m.g(x_right-3, y));
+                    __m256d b_right = _mm256_set_pd(m.b(x_right, y), m.b(x_right-1, y), m.b(x_right-2, y), m.b(x_right-3, y));
 
                     sum_r = _mm256_add_pd(sum_r, _mm256_mul_pd(r_right, weight));
                     sum_g = _mm256_add_pd(sum_g, _mm256_mul_pd(g_right, weight));

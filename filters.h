@@ -1,3 +1,6 @@
+#include <memory>
+#include <barrier>
+
 #include "matrix.h"
 
 #if !defined(FILTERS_HPP)
@@ -8,7 +11,6 @@ constexpr float pi{3.14159};
 constexpr unsigned max_radius{1000};
 void get_weights(int n, double *weights_out);
 
-Matrix Blur(Matrix& m, int radius);
-Matrix blur(Matrix m, const int radius);
+void Blur(Matrix* m, std::shared_ptr<std::barrier<>> barrier, int radius, int startPos, int endPos);
 
 #endif

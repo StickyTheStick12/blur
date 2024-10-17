@@ -33,26 +33,6 @@ Matrix::Matrix(unsigned dimension)
 {
 }
 
-Matrix::Matrix(const Matrix& other)
-    : R { new unsigned char[other.x_size * other.y_size] }
-    , G { new unsigned char[other.x_size * other.y_size] }
-    , B { new unsigned char[other.x_size * other.y_size] }
-    , x_size { other.x_size }
-    , y_size { other.y_size }
-    , color_max { other.color_max }
-{
-    for (auto x { 0 }; x < x_size; x++) {
-        for (auto y { 0 }; y < y_size; y++) {
-            auto &r_val { r(x, y) }, &g_val { g(x, y) }, &b_val { b(x, y) };
-            auto other_r_val { other.r(x, y) }, other_g_val { other.g(x, y) }, other_b_val { other.b(x, y) };
-
-            r_val = other_r_val;
-            g_val = other_g_val;
-            b_val = other_b_val;
-        }
-    }
-}
-
 Matrix& Matrix::operator=(const Matrix other)
 {
     if (this == &other) {
@@ -97,8 +77,6 @@ Matrix::~Matrix()
         delete[] B;
         B = nullptr;
     }
-
-    x_size = y_size = color_max = 0;
 }
 
 unsigned Matrix::get_x_size() const

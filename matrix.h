@@ -6,7 +6,6 @@ private:
     unsigned char* R;
     unsigned char* G;
     unsigned char* B;
-    alignas(32) unsigned char* data;
 
     unsigned x_size;
     unsigned y_size;
@@ -15,8 +14,7 @@ private:
 public:
     Matrix();
     Matrix(unsigned dimension);
-    Matrix(const Matrix& other);
-    Matrix(unsigned char* R, unsigned char* G, unsigned char* B, unsigned char* data, unsigned x_size, unsigned y_size, unsigned color_max);
+    Matrix(unsigned char* R, unsigned char* G, unsigned char* B, unsigned x_size, unsigned y_size, unsigned color_max);
     Matrix& operator=(const Matrix other);
     ~Matrix();
 

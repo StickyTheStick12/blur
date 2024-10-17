@@ -36,7 +36,6 @@ Matrix Read(const int file, const long size)
 
     mappedData++;
 
-
     unsigned colorMax = 0;
 
     while(mappedData[0] != '\n') {
@@ -46,20 +45,16 @@ Matrix Read(const int file, const long size)
 
     mappedData++;
 
-    unsigned long totalSize = dimX*dimY;
+    unsigned long totalSize = dimX*dimY*3;
 
-    unsigned char* R = new unsigned char[totalSize];
-    unsigned char* G = new unsigned char[totalSize];
-    unsigned char* B = new unsigned char[totalSize];
-
-    alignas(32) unsigned char* data = new unsigned char[totalSize];
+    unsigned char* data = new unsigned char[totalSize];
 
     std::memcpy(data, mappedData, totalSize);
 
     munmap(mappedData, size);
     close(file);
 
-    return Matrix{ R, G, B, data, dimX, dimY, colorMax};
+    return Matrix {data, dimX, dimY, colorMax};
 }
 
 void Write(const Matrix& m, const std::string& filename, const off_t fileSize)
@@ -129,12 +124,11 @@ void Write(const Matrix& m, const std::string& filename, const off_t fileSize)
     }
 
     *mappedOut++ = '\n';
+    //mappedOut++;
 
-    unsigned size = m.get_x_size() * m.get_y_size();
+    unsigned size = m.get_x_size() * m.get_y_size()*3;
 
-    unsigned char* data;
-
-    std::memcpy(mappedOut, data, size);
+    std::memcpy(mappedOut, m.GetData(), size);
 
     msync(mappedOut, fileSize, MS_SYNC);
     munmap(mappedOut, fileSize);

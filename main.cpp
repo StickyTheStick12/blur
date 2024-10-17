@@ -7,7 +7,12 @@
 #include <pthread.h>
 #include <barrier>
 #include <atomic>
-#include <iostream>
+
+
+//TODO. fix fmadd in blur.
+//TODO. fix pointers not copied each run instead fix before loops.
+//TODO. fix load instead of set?
+//todo. fix Get_Index
 
 std::atomic<int> threadIdCounter(0);
 

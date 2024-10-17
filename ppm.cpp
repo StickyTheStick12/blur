@@ -1,18 +1,14 @@
 #include "ppm.h"
-#include <fstream>
 #include <sys/mman.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <cstring>
 
 Matrix Read(const int file, const long size)
 {
     char* mappedData = static_cast<char*>(mmap(nullptr, size, PROT_READ, MAP_PRIVATE, file, 0));
 
     madvise(mappedData, size, MADV_SEQUENTIAL);
-
-    if(mappedData[0] != 'P' && mappedData[1] != '6') {
-        std::abort();
-    }
 
     mappedData += 3;
 
@@ -40,7 +36,6 @@ Matrix Read(const int file, const long size)
 
     mappedData++;
 
-    unsigned long totalSize = dimX*dimY;
 
     unsigned colorMax = 0;
 
@@ -51,20 +46,20 @@ Matrix Read(const int file, const long size)
 
     mappedData++;
 
+    unsigned long totalSize = dimX*dimY;
+
     unsigned char* R = new unsigned char[totalSize];
     unsigned char* G = new unsigned char[totalSize];
     unsigned char* B = new unsigned char[totalSize];
 
-    for(unsigned i = 0; i < totalSize; ++i) {
-        R[i] = mappedData[i*3];
-        G[i] = mappedData[i*3+1];
-        B[i] = mappedData[i*3+2];
-    }
+    alignas(32) unsigned char* data = new unsigned char[totalSize];
+
+    std::memcpy(data, mappedData, totalSize);
 
     munmap(mappedData, size);
     close(file);
 
-    return Matrix{ R, G, B, dimX, dimY, colorMax};
+    return Matrix{ R, G, B, data, dimX, dimY, colorMax};
 }
 
 void Write(const Matrix& m, const std::string& filename, const off_t fileSize)
@@ -137,14 +132,9 @@ void Write(const Matrix& m, const std::string& filename, const off_t fileSize)
 
     unsigned size = m.get_x_size() * m.get_y_size();
 
-    auto R { m.get_R() }, G { m.get_G() }, B { m.get_B() };
-    auto it_R { R }, it_G { G }, it_B { B };
+    unsigned char* data;
 
-    while (it_R < R + size && it_G < G + size && it_B < B + size) {
-        *mappedOut++ = *it_R++;
-        *mappedOut++ = *it_G++;
-        *mappedOut++ = *it_B++;
-    }
+    std::memcpy(mappedOut, data, size);
 
     msync(mappedOut, fileSize, MS_SYNC);
     munmap(mappedOut, fileSize);

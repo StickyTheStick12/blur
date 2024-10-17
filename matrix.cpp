@@ -1,9 +1,10 @@
 #include "matrix.h"
 
-Matrix::Matrix(unsigned char* R, unsigned char* G, unsigned char* B, unsigned x_size, unsigned y_size, unsigned color_max)
+Matrix::Matrix(unsigned char* R, unsigned char* G, unsigned char* B, unsigned char* data, unsigned x_size, unsigned y_size, unsigned color_max)
     : R { R }
     , G { G }
     , B { B }
+    , data {data}
     , x_size { x_size }
     , y_size { y_size }
     , color_max { color_max }

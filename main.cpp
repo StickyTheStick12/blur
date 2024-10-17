@@ -13,6 +13,7 @@
 //TODO. fix pointers not copied each run instead fix before loops.
 //TODO. fix load instead of set?
 //todo. fix Get_Index
+//todo. compile with -funroll-loops
 
 std::atomic<int> threadIdCounter(0);
 

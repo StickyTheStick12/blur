@@ -8,9 +8,6 @@
 #include <barrier>
 #include <atomic>
 
-
-//TODO. fix fmadd in blur.
-//TODO. fix pointers not copied each run instead fix before loops.
 //TODO. fix load instead of set?
 //todo. fix Get_Index
 //todo. compile with -funroll-loops

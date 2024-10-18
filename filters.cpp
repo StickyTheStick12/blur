@@ -3,7 +3,6 @@
 #include "ppm.h"
 #include <cmath>
 #include <immintrin.h>
-#include <iostream>
 
 unsigned int GetRIdx(unsigned x, unsigned y, unsigned xSize) {
     return (y * xSize + x)*3;
@@ -26,7 +25,7 @@ void GetWeights(const int n, double* weightsOut) {
 
 void Blur(Matrix* m, std::shared_ptr<std::barrier<>> barrier, int radius, int startPos, int endPos)
 {
-    Matrix scratch(m->get_x_size(), m->get_y_size());  // Assuming a temp buffer size of 3000, replace this with your dynamic size
+    Matrix scratch(m->get_x_size(), m->get_y_size());
     double w[max_radius];
     GetWeights(radius, w);
 
@@ -68,9 +67,10 @@ void Blur(Matrix* m, std::shared_ptr<std::barrier<>> barrier, int radius, int st
                     __m256d g_left = _mm256_set_pd(mPtr[GetGIdx(x_left+3, y, xSize)], mPtr[GetGIdx(x_left+2, y, xSize)], mPtr[GetGIdx(x_left+1, y, xSize)], mPtr[GetGIdx(x_left, y, xSize)]);
                     __m256d b_left = _mm256_set_pd(mPtr[GetBIdx(x_left+3, y, xSize)], mPtr[GetBIdx(x_left+2, y, xSize)], mPtr[GetBIdx(x_left+1, y, xSize)], mPtr[GetBIdx(x_left, y, xSize)]);
 
-                    sum_r = _mm256_add_pd(sum_r, _mm256_mul_pd(r_left, weight));
-                    sum_g = _mm256_add_pd(sum_g, _mm256_mul_pd(g_left, weight));
-                    sum_b = _mm256_add_pd(sum_b, _mm256_mul_pd(b_left, weight));
+                    sum_r = _mm256_fmadd_pd(r_left, weight, sum_r);
+                    sum_g = _mm256_fmadd_pd(g_left, weight, sum_g);
+                    sum_b = _mm256_fmadd_pd(b_left, weight, sum_b);
+
                     sum_w = _mm256_add_pd(sum_w, weight);
                 }
                 else if(x_left+3 >= 0)
@@ -96,9 +96,10 @@ void Blur(Matrix* m, std::shared_ptr<std::barrier<>> barrier, int radius, int st
                     __m256d g_right = _mm256_set_pd(mPtr[GetGIdx(x_right, y, xSize)], mPtr[GetGIdx(x_right-1, y, xSize)], mPtr[GetGIdx(x_right-2, y, xSize)], mPtr[GetGIdx(x_right-3, y, xSize)]);
                     __m256d b_right = _mm256_set_pd(mPtr[GetBIdx(x_right, y, xSize)], mPtr[GetBIdx(x_right-1, y, xSize)], mPtr[GetBIdx(x_right-2, y, xSize)], mPtr[GetBIdx(x_right-3, y, xSize)]);
 
-                    sum_r = _mm256_add_pd(sum_r, _mm256_mul_pd(r_right, weight));
-                    sum_g = _mm256_add_pd(sum_g, _mm256_mul_pd(g_right, weight));
-                    sum_b = _mm256_add_pd(sum_b, _mm256_mul_pd(b_right, weight));
+                    sum_r = _mm256_fmadd_pd(r_right, weight, sum_r); // sum_r = r_left * weight + sum_r
+                    sum_g = _mm256_fmadd_pd(g_right, weight, sum_g); // sum_g = g_left * weight + sum_g
+                    sum_b = _mm256_fmadd_pd(b_right, weight, sum_b); // sum_b = b_left * weight + sum_b
+
                     sum_w = _mm256_add_pd(sum_w, weight);
                 }
                 else if(x_right-3 < xSize)
@@ -193,9 +194,10 @@ void Blur(Matrix* m, std::shared_ptr<std::barrier<>> barrier, int radius, int st
                     __m256d g_left = _mm256_set_pd(sPtr[GetGIdx(x, y_left+3, xSize)], sPtr[GetGIdx(x, y_left+2, xSize)], sPtr[GetGIdx(x, y_left+1, xSize)], sPtr[GetGIdx(x, y_left, xSize)]);
                     __m256d b_left = _mm256_set_pd(sPtr[GetBIdx(x, y_left+3, xSize)], sPtr[GetBIdx(x, y_left+2, xSize)], sPtr[GetBIdx(x, y_left+1, xSize)], sPtr[GetBIdx(x, y_left, xSize)]);
 
-                    sum_r = _mm256_add_pd(sum_r, _mm256_mul_pd(r_left, weight));
-                    sum_g = _mm256_add_pd(sum_g, _mm256_mul_pd(g_left, weight));
-                    sum_b = _mm256_add_pd(sum_b, _mm256_mul_pd(b_left, weight));
+                    sum_r = _mm256_fmadd_pd(r_left, weight, sum_r); // sum_r = r_left * weight + sum_r
+                    sum_g = _mm256_fmadd_pd(g_left, weight, sum_g); // sum_g = g_left * weight + sum_g
+                    sum_b = _mm256_fmadd_pd(b_left, weight, sum_b); // sum_b = b_left * weight + sum_b
+
                     sum_w = _mm256_add_pd(sum_w, weight);
                 }
                 else if(y_left+3 >= 0)
@@ -222,9 +224,10 @@ void Blur(Matrix* m, std::shared_ptr<std::barrier<>> barrier, int radius, int st
                     __m256d g_right = _mm256_set_pd(sPtr[GetGIdx(x, y_right, xSize)], sPtr[GetGIdx(x, y_right-1, xSize)], sPtr[GetGIdx(x, y_right-2, xSize)], sPtr[GetGIdx(x, y_right-3, xSize)]);
                     __m256d b_right = _mm256_set_pd(sPtr[GetBIdx(x, y_right, xSize)], sPtr[GetBIdx(x, y_right-1, xSize)], sPtr[GetBIdx(x, y_right-2, xSize)], sPtr[GetBIdx(x, y_right-3, xSize)]);
 
-                    sum_r = _mm256_add_pd(sum_r, _mm256_mul_pd(r_right, weight));
-                    sum_g = _mm256_add_pd(sum_g, _mm256_mul_pd(g_right, weight));
-                    sum_b = _mm256_add_pd(sum_b, _mm256_mul_pd(b_right, weight));
+                    sum_r = _mm256_fmadd_pd(r_right, weight, sum_r); // sum_r = r_left * weight + sum_r
+                    sum_g = _mm256_fmadd_pd(g_right, weight, sum_g); // sum_g = g_left * weight + sum_g
+                    sum_b = _mm256_fmadd_pd(b_right, weight, sum_b); // sum_b = b_left * weight + sum_b
+
                     sum_w = _mm256_add_pd(sum_w, weight);
                 }
                 else if(y_right-3 < ySize)

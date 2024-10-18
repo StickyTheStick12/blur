@@ -32,7 +32,8 @@ void Blur(Matrix* m, std::shared_ptr<std::barrier<>> barrier, int radius, int st
 
     int ySize = m->get_y_size();
     int xSize = m->get_x_size();
-    unsigned char* ptr = m->GetData();
+    unsigned char* mPtr = m->GetData();
+    unsigned char* sPtr = scratch.GetData();
 
     for (int x = startPos; x < endPos; ++x) {
         for (int y = 0; y < ySize; ++y) {
@@ -46,9 +47,9 @@ void Blur(Matrix* m, std::shared_ptr<std::barrier<>> barrier, int radius, int st
             __m256d w0 = _mm256_set_pd(w[0], 0, 0, 0);
 
             // Load the pixel values at (x, y) for R, G, B
-            __m256d r = _mm256_set_pd(ptr[GetRIdx(x,y, xSize)], 0, 0, 0);
-            __m256d g = _mm256_set_pd(ptr[GetGIdx(x,y, xSize)], 0, 0, 0);
-            __m256d b = _mm256_set_pd(ptr[GetBIdx(x,y, xSize)], 0, 0, 0);
+            __m256d r = _mm256_set_pd(mPtr[GetRIdx(x,y, xSize)], 0, 0, 0);
+            __m256d g = _mm256_set_pd(mPtr[GetGIdx(x,y, xSize)], 0, 0, 0);
+            __m256d b = _mm256_set_pd(mPtr[GetBIdx(x,y, xSize)], 0, 0, 0);
 
             // Apply weight for the center pixel
             __m256d sum_r = _mm256_mul_pd(r, w0);
@@ -63,9 +64,9 @@ void Blur(Matrix* m, std::shared_ptr<std::barrier<>> barrier, int radius, int st
                 // Handle x - wi (left side)
                 int x_left = x - (wi+3);
                 if (x_left >= 0) {
-                    __m256d r_left = _mm256_set_pd(ptr[GetRIdx(x_left+3, y, xSize)], ptr[GetRIdx(x_left+2, y, xSize)], ptr[GetRIdx(x_left+1, y, xSize)], ptr[GetRIdx(x_left, y, xSize)]);
-                    __m256d g_left = _mm256_set_pd(ptr[GetGIdx(x_left+3, y, xSize)], ptr[GetGIdx(x_left+2, y, xSize)], ptr[GetGIdx(x_left+1, y, xSize)], ptr[GetGIdx(x_left, y, xSize)]);
-                    __m256d b_left = _mm256_set_pd(ptr[GetBIdx(x_left+3, y, xSize)], ptr[GetBIdx(x_left+2, y, xSize)], ptr[GetBIdx(x_left+1, y, xSize)], ptr[GetBIdx(x_left, y, xSize)]);
+                    __m256d r_left = _mm256_set_pd(mPtr[GetRIdx(x_left+3, y, xSize)], mPtr[GetRIdx(x_left+2, y, xSize)], mPtr[GetRIdx(x_left+1, y, xSize)], mPtr[GetRIdx(x_left, y, xSize)]);
+                    __m256d g_left = _mm256_set_pd(mPtr[GetGIdx(x_left+3, y, xSize)], mPtr[GetGIdx(x_left+2, y, xSize)], mPtr[GetGIdx(x_left+1, y, xSize)], mPtr[GetGIdx(x_left, y, xSize)]);
+                    __m256d b_left = _mm256_set_pd(mPtr[GetBIdx(x_left+3, y, xSize)], mPtr[GetBIdx(x_left+2, y, xSize)], mPtr[GetBIdx(x_left+1, y, xSize)], mPtr[GetBIdx(x_left, y, xSize)]);
 
                     sum_r = _mm256_add_pd(sum_r, _mm256_mul_pd(r_left, weight));
                     sum_g = _mm256_add_pd(sum_g, _mm256_mul_pd(g_left, weight));
@@ -78,9 +79,9 @@ void Blur(Matrix* m, std::shared_ptr<std::barrier<>> barrier, int radius, int st
                     x_left += 3;
                     while(x_left >= 0)
                     {
-                        rSum += w[temp] * ptr[GetRIdx(x_left, y, xSize)];
-                        gSum += w[temp] * ptr[GetGIdx(x_left, y, xSize)];
-                        bSum += w[temp] * ptr[GetBIdx(x_left, y, xSize)];
+                        rSum += w[temp] * mPtr[GetRIdx(x_left, y, xSize)];
+                        gSum += w[temp] * mPtr[GetGIdx(x_left, y, xSize)];
+                        bSum += w[temp] * mPtr[GetBIdx(x_left, y, xSize)];
                         wSum += w[temp];
 
                         x_left--;
@@ -91,9 +92,9 @@ void Blur(Matrix* m, std::shared_ptr<std::barrier<>> barrier, int radius, int st
                 // Handle x + wi (right side)
                 int x_right = x + wi+3;
                 if (x_right < xSize) {
-                    __m256d r_right = _mm256_set_pd(ptr[GetRIdx(x_right, y, xSize)], ptr[GetRIdx(x_right-1, y, xSize)], ptr[GetRIdx(x_right-2, y, xSize)], ptr[GetRIdx(x_right-3, y, xSize)]);
-                    __m256d g_right = _mm256_set_pd(ptr[GetGIdx(x_right, y, xSize)], ptr[GetGIdx(x_right-1, y, xSize)], ptr[GetGIdx(x_right-2, y, xSize)], ptr[GetGIdx(x_right-3, y, xSize)]);
-                    __m256d b_right = _mm256_set_pd(ptr[GetBIdx(x_right, y, xSize)], ptr[GetBIdx(x_right-1, y, xSize)], ptr[GetBIdx(x_right-2, y, xSize)], ptr[GetBIdx(x_right-3, y, xSize)]);
+                    __m256d r_right = _mm256_set_pd(mPtr[GetRIdx(x_right, y, xSize)], mPtr[GetRIdx(x_right-1, y, xSize)], mPtr[GetRIdx(x_right-2, y, xSize)], mPtr[GetRIdx(x_right-3, y, xSize)]);
+                    __m256d g_right = _mm256_set_pd(mPtr[GetGIdx(x_right, y, xSize)], mPtr[GetGIdx(x_right-1, y, xSize)], mPtr[GetGIdx(x_right-2, y, xSize)], mPtr[GetGIdx(x_right-3, y, xSize)]);
+                    __m256d b_right = _mm256_set_pd(mPtr[GetBIdx(x_right, y, xSize)], mPtr[GetBIdx(x_right-1, y, xSize)], mPtr[GetBIdx(x_right-2, y, xSize)], mPtr[GetBIdx(x_right-3, y, xSize)]);
 
                     sum_r = _mm256_add_pd(sum_r, _mm256_mul_pd(r_right, weight));
                     sum_g = _mm256_add_pd(sum_g, _mm256_mul_pd(g_right, weight));
@@ -106,9 +107,9 @@ void Blur(Matrix* m, std::shared_ptr<std::barrier<>> barrier, int radius, int st
                     int temp = wi;
                     while(x_right < xSize)
                     {
-                        rSum += w[temp] * ptr[GetRIdx(x_right, y, xSize)];
-                        gSum += w[temp] * ptr[GetGIdx(x_right, y, xSize)];
-                        bSum += w[temp] * ptr[GetBIdx(x_right, y, xSize)];
+                        rSum += w[temp] * mPtr[GetRIdx(x_right, y, xSize)];
+                        gSum += w[temp] * mPtr[GetGIdx(x_right, y, xSize)];
+                        bSum += w[temp] * mPtr[GetBIdx(x_right, y, xSize)];
                         wSum += w[temp];
 
                         x_right++;
@@ -124,18 +125,18 @@ void Blur(Matrix* m, std::shared_ptr<std::barrier<>> barrier, int radius, int st
                 // Handle x - wi (left side)
                 int x_left = x - wi;
                 if (x_left >= 0) {
-                    rSum += wc * ptr[GetRIdx(x_left, y, xSize)];
-                    gSum += wc * ptr[GetGIdx(x_left, y, xSize)];
-                    bSum += wc * ptr[GetBIdx(x_left, y, xSize)];
+                    rSum += wc * mPtr[GetRIdx(x_left, y, xSize)];
+                    gSum += wc * mPtr[GetGIdx(x_left, y, xSize)];
+                    bSum += wc * mPtr[GetBIdx(x_left, y, xSize)];
                     wSum += wc;
                 }
 
                 // Handle x + wi (right side)
                 int x_right = x + wi;
                 if (x_right < xSize) {
-                    rSum += wc * ptr[GetRIdx(x_right, y, xSize)];
-                    gSum += wc * ptr[GetGIdx(x_right, y, xSize)];
-                    bSum += wc * ptr[GetBIdx(x_right, y, xSize)];
+                    rSum += wc * mPtr[GetRIdx(x_right, y, xSize)];
+                    gSum += wc * mPtr[GetGIdx(x_right, y, xSize)];
+                    bSum += wc * mPtr[GetBIdx(x_right, y, xSize)];
                     wSum += wc;
                 }
             }
@@ -152,16 +153,13 @@ void Blur(Matrix* m, std::shared_ptr<std::barrier<>> barrier, int radius, int st
             wSum += result_w[0] + result_w[1] + result_w[2] + result_w[3];
 
             // Clamp the values
-            scratch.GetData()[GetRIdx(x, y, xSize)] = rSum/wSum;
-            scratch.GetData()[GetGIdx(x, y, xSize)] = gSum/wSum;
-            scratch.GetData()[GetBIdx(x, y, xSize)] = bSum/wSum;
+            sPtr[GetRIdx(x, y, xSize)] = rSum/wSum;
+            sPtr[GetGIdx(x, y, xSize)] = gSum/wSum;
+            sPtr[GetBIdx(x, y, xSize)] = bSum/wSum;
         }
     }
 
-
     barrier->arrive_and_wait();
-
-    ptr = scratch.GetData();
 
     // Horizontal blur
     for(int x = startPos; x < endPos; ++x) {
@@ -175,9 +173,9 @@ void Blur(Matrix* m, std::shared_ptr<std::barrier<>> barrier, int radius, int st
             __m256d w0 = _mm256_set_pd(w[0], 0, 0, 0);
 
             // Load the pixel values at (x, y) for R, G, B
-            __m256d r = _mm256_set_pd(ptr[GetRIdx(x,y, xSize)], 0, 0, 0);
-            __m256d g = _mm256_set_pd(ptr[GetGIdx(x,y, xSize)], 0, 0, 0);
-            __m256d b = _mm256_set_pd(ptr[GetBIdx(x,y, xSize)], 0, 0, 0);
+            __m256d r = _mm256_set_pd(sPtr[GetRIdx(x,y, xSize)], 0, 0, 0);
+            __m256d g = _mm256_set_pd(sPtr[GetGIdx(x,y, xSize)], 0, 0, 0);
+            __m256d b = _mm256_set_pd(sPtr[GetBIdx(x,y, xSize)], 0, 0, 0);
 
             // Apply weight for the center pixel
             __m256d sum_r = _mm256_mul_pd(r, w0);
@@ -191,9 +189,9 @@ void Blur(Matrix* m, std::shared_ptr<std::barrier<>> barrier, int radius, int st
                 // Handle x - wi (left side)
                 int y_left = y - (wi+3);
                 if (y_left >= 0) {
-                    __m256d r_left = _mm256_set_pd(ptr[GetRIdx(x, y_left+3, xSize)], ptr[GetRIdx(x, y_left+2, xSize)], ptr[GetRIdx(x, y_left+1, xSize)], ptr[GetRIdx(x, y_left, xSize)]);
-                    __m256d g_left = _mm256_set_pd(ptr[GetGIdx(x, y_left+3, xSize)], ptr[GetGIdx(x, y_left+2, xSize)], ptr[GetGIdx(x, y_left+1, xSize)], ptr[GetGIdx(x, y_left, xSize)]);
-                    __m256d b_left = _mm256_set_pd(ptr[GetBIdx(x, y_left+3, xSize)], ptr[GetBIdx(x, y_left+2, xSize)], ptr[GetBIdx(x, y_left+1, xSize)], ptr[GetBIdx(x, y_left, xSize)]);
+                    __m256d r_left = _mm256_set_pd(sPtr[GetRIdx(x, y_left+3, xSize)], sPtr[GetRIdx(x, y_left+2, xSize)], sPtr[GetRIdx(x, y_left+1, xSize)], sPtr[GetRIdx(x, y_left, xSize)]);
+                    __m256d g_left = _mm256_set_pd(sPtr[GetGIdx(x, y_left+3, xSize)], sPtr[GetGIdx(x, y_left+2, xSize)], sPtr[GetGIdx(x, y_left+1, xSize)], sPtr[GetGIdx(x, y_left, xSize)]);
+                    __m256d b_left = _mm256_set_pd(sPtr[GetBIdx(x, y_left+3, xSize)], sPtr[GetBIdx(x, y_left+2, xSize)], sPtr[GetBIdx(x, y_left+1, xSize)], sPtr[GetBIdx(x, y_left, xSize)]);
 
                     sum_r = _mm256_add_pd(sum_r, _mm256_mul_pd(r_left, weight));
                     sum_g = _mm256_add_pd(sum_g, _mm256_mul_pd(g_left, weight));
@@ -206,9 +204,9 @@ void Blur(Matrix* m, std::shared_ptr<std::barrier<>> barrier, int radius, int st
                     y_left += 3;
                     while(y_left >= 0)
                     {
-                        rSum += w[temp] * ptr[GetRIdx(x, y_left, xSize)];
-                        gSum += w[temp] * ptr[GetGIdx(x, y_left, xSize)];
-                        bSum += w[temp] * ptr[GetBIdx(x, y_left, xSize)];
+                        rSum += w[temp] * sPtr[GetRIdx(x, y_left, xSize)];
+                        gSum += w[temp] * sPtr[GetGIdx(x, y_left, xSize)];
+                        bSum += w[temp] * sPtr[GetBIdx(x, y_left, xSize)];
 
                         wSum += w[temp];
 
@@ -220,9 +218,9 @@ void Blur(Matrix* m, std::shared_ptr<std::barrier<>> barrier, int radius, int st
                 // Handle x + wi (right side)
                 int y_right = y + wi+3;
                 if (y_right < ySize) {
-                    __m256d r_right = _mm256_set_pd(ptr[GetRIdx(x, y_right, xSize)], ptr[GetRIdx(x, y_right-1, xSize)], ptr[GetRIdx(x, y_right-2, xSize)], ptr[GetRIdx(x, y_right-3, xSize)]);
-                    __m256d g_right = _mm256_set_pd(ptr[GetGIdx(x, y_right, xSize)], ptr[GetGIdx(x, y_right-1, xSize)], ptr[GetGIdx(x, y_right-2, xSize)], ptr[GetGIdx(x, y_right-3, xSize)]);
-                    __m256d b_right = _mm256_set_pd(ptr[GetBIdx(x, y_right, xSize)], ptr[GetBIdx(x, y_right-1, xSize)], ptr[GetBIdx(x, y_right-2, xSize)], ptr[GetBIdx(x, y_right-3, xSize)]);
+                    __m256d r_right = _mm256_set_pd(sPtr[GetRIdx(x, y_right, xSize)], sPtr[GetRIdx(x, y_right-1, xSize)], sPtr[GetRIdx(x, y_right-2, xSize)], sPtr[GetRIdx(x, y_right-3, xSize)]);
+                    __m256d g_right = _mm256_set_pd(sPtr[GetGIdx(x, y_right, xSize)], sPtr[GetGIdx(x, y_right-1, xSize)], sPtr[GetGIdx(x, y_right-2, xSize)], sPtr[GetGIdx(x, y_right-3, xSize)]);
+                    __m256d b_right = _mm256_set_pd(sPtr[GetBIdx(x, y_right, xSize)], sPtr[GetBIdx(x, y_right-1, xSize)], sPtr[GetBIdx(x, y_right-2, xSize)], sPtr[GetBIdx(x, y_right-3, xSize)]);
 
                     sum_r = _mm256_add_pd(sum_r, _mm256_mul_pd(r_right, weight));
                     sum_g = _mm256_add_pd(sum_g, _mm256_mul_pd(g_right, weight));
@@ -235,9 +233,9 @@ void Blur(Matrix* m, std::shared_ptr<std::barrier<>> barrier, int radius, int st
                     int temp = wi;
                     while(y_right < ySize)
                     {
-                        rSum += w[temp] * ptr[GetRIdx(x, y_right, xSize)];
-                        gSum += w[temp] * ptr[GetGIdx(x, y_right, xSize)];
-                        bSum += w[temp] * ptr[GetBIdx(x, y_right, xSize)];
+                        rSum += w[temp] * sPtr[GetRIdx(x, y_right, xSize)];
+                        gSum += w[temp] * sPtr[GetGIdx(x, y_right, xSize)];
+                        bSum += w[temp] * sPtr[GetBIdx(x, y_right, xSize)];
                         wSum += w[temp];
 
                         y_right++;
@@ -252,18 +250,18 @@ void Blur(Matrix* m, std::shared_ptr<std::barrier<>> barrier, int radius, int st
                 // Handle x - wi (left side)
                 int y_left = y - wi;
                 if (y_left >= 0) {
-                    rSum += wc * ptr[GetRIdx(x, y_left, xSize)];
-                    gSum += wc * ptr[GetGIdx(x, y_left, xSize)];
-                    bSum += wc * ptr[GetBIdx(x, y_left, xSize)];
+                    rSum += wc * sPtr[GetRIdx(x, y_left, xSize)];
+                    gSum += wc * sPtr[GetGIdx(x, y_left, xSize)];
+                    bSum += wc * sPtr[GetBIdx(x, y_left, xSize)];
                     wSum += wc;
                 }
 
                 // Handle x + wi (right side)
                 int y_right = x + wi;
                 if (y_right < ySize) {
-                    rSum += wc * ptr[GetRIdx(x, y_right, xSize)];
-                    gSum += wc * ptr[GetGIdx(x, y_right, xSize)];
-                    bSum += wc * ptr[GetBIdx(x, y_right, xSize)];
+                    rSum += wc * sPtr[GetRIdx(x, y_right, xSize)];
+                    gSum += wc * sPtr[GetGIdx(x, y_right, xSize)];
+                    bSum += wc * sPtr[GetBIdx(x, y_right, xSize)];
                     wSum += wc;
                 }
             }
@@ -279,9 +277,9 @@ void Blur(Matrix* m, std::shared_ptr<std::barrier<>> barrier, int radius, int st
             bSum += results_b[0] + results_b[1] + results_b[2] + results_b[3];
             wSum += result_w[0] + result_w[1] + result_w[2] + result_w[3];
 
-            m->GetData()[GetRIdx(x, y, xSize)] = rSum/wSum;
-            m->GetData()[GetGIdx(x, y, xSize)] = gSum/wSum;
-            m->GetData()[GetBIdx(x, y, xSize)] = bSum/wSum;
+            mPtr[GetRIdx(x, y, xSize)] = rSum/wSum;
+            mPtr[GetGIdx(x, y, xSize)] = gSum/wSum;
+            mPtr[GetBIdx(x, y, xSize)] = bSum/wSum;
         }
     }
 }

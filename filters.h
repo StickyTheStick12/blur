@@ -9,7 +9,6 @@
 constexpr float maxX{1.33};
 constexpr float pi{3.14159};
 constexpr unsigned max_radius{1000};
-void get_weights(int n, double *weights_out);
 
 void Blur(Matrix* m, std::shared_ptr<std::barrier<>> barrier, int radius, int startPos, int endPos);
 

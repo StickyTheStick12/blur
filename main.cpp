@@ -8,7 +8,6 @@
 #include <barrier>
 #include <atomic>
 
-//TODO. fix load instead of set?
 //todo. compile with -funroll-loops
 //todo. maybe use mmap array instead of copying it into a new array
 

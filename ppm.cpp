@@ -47,7 +47,7 @@ Matrix Read(const int file, const long size)
 
     unsigned long totalSize = dimX*dimY*3;
 
-    unsigned char* data = new unsigned char[totalSize];
+    char* data = new char[totalSize];
 
     std::memcpy(data, mappedData, totalSize);
 

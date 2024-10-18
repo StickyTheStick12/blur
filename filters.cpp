@@ -24,8 +24,8 @@ void Blur(Matrix* m, std::shared_ptr<std::barrier<>> barrier, int radius, int st
 
     int ySize = m->get_y_size();
     int xSize = m->get_x_size();
-    unsigned char* mPtr = m->GetData();
-    unsigned char* sPtr = scratch.GetData();
+    char* mPtr = m->GetData();
+    char* sPtr = scratch.GetData();
 
     for (int x = startPos; x < endPos; ++x) {
         for (int y = 0; y < ySize; ++y) {

@@ -9,7 +9,6 @@
 #include <atomic>
 
 //TODO. fix load instead of set?
-//todo. fix Get_Index
 //todo. compile with -funroll-loops
 //todo. maybe use mmap array instead of copying it into a new array
 

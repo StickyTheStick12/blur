@@ -8,17 +8,6 @@ unsigned int GetBaseIdx(unsigned x, unsigned y, unsigned xSize)
 {
     return (y * xSize + x) * 3;
 }
-unsigned int GetRIdx(unsigned x, unsigned y, unsigned xSize) {
-    return (y * xSize + x)*3;
-};
-
-unsigned int GetGIdx(unsigned x, unsigned y, unsigned xSize) {
-    return (y * xSize + x)*3 + 1;
-}
-
-unsigned int GetBIdx(unsigned x, unsigned y, unsigned xSize) {
-    return (y * xSize + x)*3 + 2;
-}
 
 void GetWeights(const int n, double* weightsOut) {
     for (int i = 0; i <= n; ++i) {
@@ -173,9 +162,12 @@ void Blur(Matrix* m, std::shared_ptr<std::barrier<>> barrier, int radius, int st
             wSum += result_w[0] + result_w[1] + result_w[2] + result_w[3];
 
             // Clamp the values
-            sPtr[GetRIdx(x, y, xSize)] = rSum/wSum;
-            sPtr[GetGIdx(x, y, xSize)] = gSum/wSum;
-            sPtr[GetBIdx(x, y, xSize)] = bSum/wSum;
+
+            idx = GetBaseIdx(x, y, xSize);
+
+            sPtr[idx] = rSum/wSum;
+            sPtr[idx] = gSum/wSum;
+            sPtr[idx] = bSum/wSum;
         }
     }
 
@@ -210,12 +202,12 @@ void Blur(Matrix* m, std::shared_ptr<std::barrier<>> barrier, int radius, int st
 
                 // Handle x - wi (left side)
                 int y_left = y - (wi+3);
-                unsigned int idx = GetBaseIdx(x, y_left, xSize);
 
                 if (y_left >= 0) {
-                    __m256d r_left = _mm256_set_pd(sPtr[idx + 3*xSize], sPtr[idx + 2*xSize], sPtr[idx + 1*xSize], sPtr[idx]);
-                    __m256d g_left = _mm256_set_pd(sPtr[idx + 3*xSize+1], sPtr[idx + 2*xSize+1], sPtr[idx + 1*xSize+1], sPtr[idx+1]);
-                    __m256d b_left = _mm256_set_pd(sPtr[idx + 3*xSize+2], sPtr[idx + 2*xSize+2], sPtr[idx + 1*xSize+2], sPtr[idx+2]);
+                    idx = GetBaseIdx(x, y_left, xSize);
+                    __m256d r_left = _mm256_set_pd(sPtr[idx + 9*xSize], sPtr[idx + 6*xSize], sPtr[idx + 3*xSize], sPtr[idx]);
+                    __m256d g_left = _mm256_set_pd(sPtr[idx + 9*xSize+1], sPtr[idx + 6*xSize+1], sPtr[idx + 3*xSize+1], sPtr[idx+1]);
+                    __m256d b_left = _mm256_set_pd(sPtr[idx + 9*xSize+2], sPtr[idx + 6*xSize+2], sPtr[idx + 3*xSize+2], sPtr[idx+2]);
 
                     sum_r = _mm256_fmadd_pd(r_left, weight, sum_r); // sum_r = r_left * weight + sum_r
                     sum_g = _mm256_fmadd_pd(g_left, weight, sum_g); // sum_g = g_left * weight + sum_g
@@ -227,7 +219,8 @@ void Blur(Matrix* m, std::shared_ptr<std::barrier<>> barrier, int radius, int st
                 {
                     int temp = wi;
                     y_left += 3;
-                    idx += 3*xSize;
+                    idx = GetBaseIdx(x, y_left, xSize);
+
                     while(y_left >= 0)
                     {
                         rSum += w[temp] * sPtr[idx];
@@ -238,17 +231,18 @@ void Blur(Matrix* m, std::shared_ptr<std::barrier<>> barrier, int radius, int st
 
                         y_left--;
                         temp--;
-                        idx -= 3;
+                        idx -= 3*xSize;
                     }
                 }
 
                 // Handle x + wi (right side)
                 int y_right = y + wi+3;
-                idx = GetBaseIdx(x, y_right, xSize);
                 if (y_right < ySize) {
-                    __m256d r_right = _mm256_set_pd(sPtr[idx], sPtr[idx - xSize], sPtr[idx-2*xSize], sPtr[idx-3*xSize]);
-                    __m256d g_right = _mm256_set_pd(sPtr[idx+1], sPtr[idx - xSize+1], sPtr[idx-2*xSize+1], sPtr[idx-3*xSize+1]);
-                    __m256d b_right = _mm256_set_pd(sPtr[idx+2], sPtr[idx - xSize+2], sPtr[idx-2*xSize+2], sPtr[idx-3*xSize+2]);
+                    idx = GetBaseIdx(x, y_right, xSize);
+
+                    __m256d r_right = _mm256_set_pd(sPtr[idx], sPtr[idx - 3*xSize], sPtr[idx-6*xSize], sPtr[idx-9*xSize]);
+                    __m256d g_right = _mm256_set_pd(sPtr[idx+1], sPtr[idx - 3*xSize+1], sPtr[idx-6*xSize+1], sPtr[idx-9*xSize+1]);
+                    __m256d b_right = _mm256_set_pd(sPtr[idx+2], sPtr[idx - 3*xSize+2], sPtr[idx-6*xSize+2], sPtr[idx-9*xSize+2]);
 
                     sum_r = _mm256_fmadd_pd(r_right, weight, sum_r); // sum_r = r_left * weight + sum_r
                     sum_g = _mm256_fmadd_pd(g_right, weight, sum_g); // sum_g = g_left * weight + sum_g
@@ -259,7 +253,7 @@ void Blur(Matrix* m, std::shared_ptr<std::barrier<>> barrier, int radius, int st
                 else if(y_right-3 < ySize)
                 {
                     y_right -= 3;
-                    idx -= 3*xSize;
+                    idx = GetBaseIdx(x, y_right, xSize);
                     int temp = wi;
                     while(y_right < ySize)
                     {
@@ -270,7 +264,7 @@ void Blur(Matrix* m, std::shared_ptr<std::barrier<>> barrier, int radius, int st
 
                         y_right++;
                         temp++;
-                        idx += xSize;
+                        idx += 3*xSize;
                     }
                 }
             }
@@ -310,9 +304,11 @@ void Blur(Matrix* m, std::shared_ptr<std::barrier<>> barrier, int radius, int st
             bSum += results_b[0] + results_b[1] + results_b[2] + results_b[3];
             wSum += result_w[0] + result_w[1] + result_w[2] + result_w[3];
 
-            mPtr[GetRIdx(x, y, xSize)] = rSum/wSum;
-            mPtr[GetGIdx(x, y, xSize)] = gSum/wSum;
-            mPtr[GetBIdx(x, y, xSize)] = bSum/wSum;
+            idx = GetBaseIdx(x, y, xSize);
+
+            mPtr[idx] = rSum/wSum;
+            mPtr[idx] = gSum/wSum;
+            mPtr[idx] = bSum/wSum;
         }
     }
 }

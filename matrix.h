@@ -3,7 +3,7 @@
 
 class Matrix {
 private:
-    char* data;
+    unsigned char* data;
 
     unsigned x_size;
     unsigned y_size;
@@ -11,14 +11,14 @@ private:
 
 public:
     Matrix(unsigned xDim, unsigned yDim);
-    Matrix(char* data, unsigned x_size, unsigned y_size, unsigned color_max);
+    Matrix(unsigned char* data, unsigned x_size, unsigned y_size, unsigned color_max);
     ~Matrix();
 
     unsigned get_x_size() const;
     unsigned get_y_size() const;
     unsigned get_color_max() const;
 
-    char* GetData() const;
+    unsigned char* GetData() const;
 
 };
 

@@ -1,6 +1,6 @@
 #include "matrix.h"
 
-Matrix::Matrix(char* data, unsigned x_size, unsigned y_size, unsigned color_max)
+Matrix::Matrix(unsigned char* data, unsigned x_size, unsigned y_size, unsigned color_max)
     : data {data}
     , x_size { x_size }
     , y_size { y_size }
@@ -9,7 +9,7 @@ Matrix::Matrix(char* data, unsigned x_size, unsigned y_size, unsigned color_max)
 }
 
 Matrix::Matrix(unsigned xDim, unsigned yDim)
-    : data { new char[xDim * yDim * 3]}
+    : data { new unsigned char[xDim * yDim * 3]}
     , x_size { xDim }
     , y_size { yDim }
     , color_max { 0 }
@@ -36,7 +36,6 @@ unsigned Matrix::get_color_max() const
     return color_max;
 }
 
-char* Matrix::GetData() const {
+unsigned char* Matrix::GetData() const {
     return data;
 }
-

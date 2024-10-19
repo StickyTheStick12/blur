@@ -6,7 +6,7 @@
 
 Matrix Read(const int file, const long size)
 {
-    char* mappedData = static_cast<char*>(mmap(nullptr, size, PROT_READ, MAP_PRIVATE, file, 0));
+    char* mappedData = static_cast<char*>(mmap(nullptr, size, PROT_READ | PROT_WRITE, MAP_PRIVATE, file, 0));
 
     madvise(mappedData, size, MADV_SEQUENTIAL);
 
@@ -47,7 +47,7 @@ Matrix Read(const int file, const long size)
 
     unsigned long totalSize = dimX*dimY*3;
 
-    char* data = new char[totalSize];
+    unsigned char* data = new unsigned char[totalSize];
 
     std::memcpy(data, mappedData, totalSize);
 

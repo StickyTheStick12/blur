@@ -8,9 +8,10 @@
 #include <barrier>
 #include <atomic>
 
-//todo. compile with -funroll-loops
-//todo. maybe use mmap array instead of copying it into a new array
-
+//todo. double inv_wSum = 1.0 / wSum;
+sPtr[idx] = rSum * inv_wSum;
+sPtr[idx+1] = gSum * inv_wSum;
+sPtr[idx+2] = bSum * inv_wSum;
 std::atomic<int> threadIdCounter(0);
 
 struct ThreadData {

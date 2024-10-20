@@ -65,6 +65,8 @@ void Write(const Matrix& m, const std::string& filename, const off_t fileSize)
 
     char* mappedOut = static_cast<char*>(mmap(nullptr, fileSize, PROT_WRITE, MAP_SHARED, file, 0));
 
+    char* basePtr = mappedOut;
+    
     madvise(mappedOut, fileSize, MADV_SEQUENTIAL);
 
     mappedOut[0] = 'P';
@@ -130,7 +132,12 @@ void Write(const Matrix& m, const std::string& filename, const off_t fileSize)
 
     std::memcpy(mappedOut, m.GetData(), size);
 
-    msync(mappedOut, fileSize, MS_SYNC);
+    msync(basePtr, fileSize, MS_SYNC);
+
+    off_t actualFileSize = mappedOut - basePtr;
+
+    ftruncate(file, actualFileSize);
+    
     munmap(mappedOut, fileSize);
     close(file);
 }
